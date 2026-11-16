@@ -161,7 +161,7 @@ html, body {
 
 #buy-menu {
   position: fixed;
-  top: 112px;
+  top: 140px;
   right: 32px;
   width: min(510px, 92vw);
   padding: 16px;
@@ -178,9 +178,11 @@ html, body {
 #buy-list { display: grid; gap: 9px; }
 .buy-cat { font-family: var(--font-readout); font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
 .buy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.buy-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 9px; font-family: var(--font-readout); font-size: 11px; color: var(--white); background: rgba(30, 39, 41, 0.9); border: 1px solid var(--hairline); cursor: pointer; text-align: left; }
+.buy-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 9px; font-family: var(--font-readout); font-size: 11px; color: var(--white); background: rgba(52, 66, 68, 0.96); border: 1px solid rgba(242, 238, 226, 0.28); cursor: pointer; text-align: left; }
+.buy-item:hover { background: rgba(78, 96, 98, 0.98); border-color: var(--accent); }
+.buy-item.off:hover { background: rgba(52, 66, 68, 0.96); border-color: rgba(242, 238, 226, 0.28); }
 .buy-item b { color: var(--accent); font-weight: 500; }
-.buy-item.off { opacity: 0.32; }
+.buy-item.off { opacity: 0.3; filter: grayscale(1); cursor: default; }
 #buy-button { position: fixed; top: 110px; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 5px 12px; font: inherit; font-size: 10px; letter-spacing: 0.15em; color: var(--ink); background: var(--accent); border: 0; cursor: pointer; }
 #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 28vmin, rgba(0, 0, 0, 0.96) 29vmin); }
 

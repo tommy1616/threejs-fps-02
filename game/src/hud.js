@@ -267,7 +267,7 @@ export function createHud() {
   for (let index = 0; index < buyButtons.length; index += 1) {
    const entry = buyButtons[index];
    const locked = entry.item.price > player.money || (entry.item.defenders && player.team !== 'syndicate');
-   entry.button.classList.toggle('off', locked);
+   entry.button.classList.toggle('off', Boolean(locked));
   }
 
   let rowsUsed = 0;

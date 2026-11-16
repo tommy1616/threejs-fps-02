@@ -12,7 +12,7 @@ import { restartMatch, startMatch, stepRounds } from './rounds.js';
 import { stepObjective } from './objective.js';
 import { buyItem, canBuy } from './economy.js';
 import { createWeapon, SHOP, WEAPONS } from './weapons.js';
-import { stepGrenades } from './grenades.js';
+import { stepGrenades, throwGrenade } from './grenades.js';
 import { createAudio } from './audio.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -20,6 +20,7 @@ const requestedShot = params.get('shot');
 const shot = ['start', 'play', 'end', 'plant', 'defuse', 'buy', 'nade'].includes(requestedShot) ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const testMode = params.get('test') === '1';
+const nadeTest = params.get('test') === 'nade';
 const idleMode = params.get('idle') === '1';
 const carrierParam = params.get('carrier');
 
@@ -275,6 +276,32 @@ function setupBuyShot() {
  player.money = 4200;
 }
 
+function setupNadeTest() {
+ liveShot(1, 0, 0, 100);
+ state.match.setupTime = 0;
+ const player = state.player;
+ placeActor(player, 0, 14, 0);
+ player.grenades.frag = 1;
+ throwGrenade(state, player, 'frag', false);
+ let blastSeen = false;
+ let fuseTime = null;
+ for (let step = 0; step < 180; step += 1) {
+  stepGrenades(state, CONFIG.fixedDt);
+  if (!blastSeen && state.blasts.some((item) => item.active)) {
+   blastSeen = true;
+   fuseTime = Number(((step + 1) * CONFIG.fixedDt).toFixed(2));
+  }
+ }
+ const activeFrags = state.grenades.filter((item) => item.active && item.kind === 'frag').length;
+ const summary = { blastSeen, fuseTime, activeFrags };
+ document.title = `NADE ${JSON.stringify(summary)}`;
+ document.body.dataset.summary = JSON.stringify(summary);
+ frozen = true;
+ state.ui.overlay = 'none';
+ state.ui.hudVisible = true;
+ state.view.mode = 'player';
+}
+
 function setupIdleTest() {
  startMatch(state);
  const carrier = state.objective.carrierId === 'p0';
@@ -431,6 +458,7 @@ else if (shot === 'plant') setupPlantShot();
 else if (shot === 'defuse') setupDefuseShot();
 else if (shot === 'buy') setupBuyShot();
 else if (shot === 'nade') setupNadeShot();
+if (nadeTest) setupNadeTest();
 if (idleMode) setupIdleTest();
 if (testMode) setupTest();
 

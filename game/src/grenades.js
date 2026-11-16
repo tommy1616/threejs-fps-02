@@ -128,13 +128,15 @@ for (let index = 0; index < state.grenades.length; index += 1) {
   const grenade = state.grenades[index];
   if (!grenade.active) continue;
   grenade.sound = Math.max(0, grenade.sound - dt);
+  grenade.fuse -= dt;
+  const out = grenade.x < -30 || grenade.x > 30 || grenade.z < -30 || grenade.z > 30 || grenade.y < -5;
+  if (grenade.fuse <= 0 || out) {
+   if (grenade.kind === 'frag') explodeFrag(state, grenade);
+   else deploySmoke(state, grenade.x, grenade.z);
+   grenade.active = false;
+   continue;
+  }
   moveGrenade(state, grenade, dt);
- if (!grenade.active) continue;
- grenade.fuse -= dt;
- if (grenade.fuse > 0) continue;
- if (grenade.kind === 'frag') explodeFrag(state, grenade);
- else deploySmoke(state, grenade.x, grenade.z);
- grenade.active = false;
 }
 
 for (let index = 0; index < state.smokes.length; index += 1) {
