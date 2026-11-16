@@ -138,6 +138,39 @@ const CALLOUTS = Object.freeze([
   Object.freeze({ name: 'Syndicate Spawn', x: 0, z: 20 }),
 ]);
 
+const WAYPOINTS = Object.freeze([
+  Object.freeze({ id: 'as', x: 0, z: 19, links: Object.freeze(['asW', 'asE', 'mS']) }),
+  Object.freeze({ id: 'asW', x: -20.5, z: 19, links: Object.freeze(['as', 'aw']) }),
+  Object.freeze({ id: 'asE', x: 20.5, z: 19, links: Object.freeze(['as', 'ae']) }),
+  Object.freeze({ id: 'aw', x: -20.5, z: 15, links: Object.freeze(['asW', 'lA1']) }),
+  Object.freeze({ id: 'ae', x: 20.5, z: 15, links: Object.freeze(['asE', 'lB1']) }),
+  Object.freeze({ id: 'mS', x: 0, z: 13, links: Object.freeze(['as', 'mC']) }),
+  Object.freeze({ id: 'mC', x: 0, z: 7, links: Object.freeze(['mS', 'mW', 'mE']) }),
+  Object.freeze({ id: 'mW', x: -3, z: 4, links: Object.freeze(['mC', 'mSideW', 'wY']) }),
+  Object.freeze({ id: 'mE', x: 3, z: 4, links: Object.freeze(['mC', 'mSideE', 'eY']) }),
+  Object.freeze({ id: 'mSideW', x: -3.5, z: 0, links: Object.freeze(['mW', 'mN']) }),
+  Object.freeze({ id: 'mSideE', x: 3.5, z: 0, links: Object.freeze(['mE', 'mN']) }),
+  Object.freeze({ id: 'mN', x: 0, z: -6, links: Object.freeze(['mSideW', 'mSideE', 'aShort', 'bShort', 'dMidS']) }),
+  Object.freeze({ id: 'aShort', x: -7, z: -8, links: Object.freeze(['mN', 'aSite']) }),
+  Object.freeze({ id: 'bShort', x: 7, z: -8, links: Object.freeze(['mN', 'bSite']) }),
+  Object.freeze({ id: 'aSite', x: -15, z: -8, links: Object.freeze(['aShort', 'lA4', 'dA']) }),
+  Object.freeze({ id: 'bSite', x: 15, z: -8, links: Object.freeze(['bShort', 'lB4', 'dB']) }),
+  Object.freeze({ id: 'lA1', x: -24, z: 13, links: Object.freeze(['aw', 'lA2']) }),
+  Object.freeze({ id: 'lA2', x: -24, z: 5, links: Object.freeze(['lA1', 'lA3', 'wY']) }),
+  Object.freeze({ id: 'lA3', x: -18.5, z: -1, links: Object.freeze(['lA2', 'lA4']) }),
+  Object.freeze({ id: 'lA4', x: -18, z: -5, links: Object.freeze(['lA3', 'aSite']) }),
+  Object.freeze({ id: 'lB1', x: 24, z: 13, links: Object.freeze(['ae', 'lB2']) }),
+  Object.freeze({ id: 'lB2', x: 24, z: 5, links: Object.freeze(['lB1', 'lB3', 'eY']) }),
+  Object.freeze({ id: 'lB3', x: 18.5, z: -1, links: Object.freeze(['lB2', 'lB4']) }),
+  Object.freeze({ id: 'lB4', x: 18, z: -5, links: Object.freeze(['lB3', 'bSite']) }),
+  Object.freeze({ id: 'wY', x: -10, z: 7.5, links: Object.freeze(['mW', 'lA2']) }),
+  Object.freeze({ id: 'eY', x: 10, z: 7.5, links: Object.freeze(['mE', 'lB2']) }),
+  Object.freeze({ id: 'ds', x: 0, z: -19, links: Object.freeze(['dMidS', 'dA', 'dB']) }),
+  Object.freeze({ id: 'dMidS', x: 0, z: -12, links: Object.freeze(['ds', 'mN']) }),
+  Object.freeze({ id: 'dA', x: -18, z: -18, links: Object.freeze(['ds', 'aSite']) }),
+  Object.freeze({ id: 'dB', x: 18, z: -18, links: Object.freeze(['ds', 'bSite']) }),
+]);
+
 export const MAP = Object.freeze({
   name: 'Saltworks',
   subtitle: 'A tidal salt refinery on the dry coast',
@@ -146,6 +179,7 @@ export const MAP = Object.freeze({
   spawns: SPAWNS,
   sites: SITES,
   callouts: CALLOUTS,
+  waypoints: WAYPOINTS,
 });
 
 export function overlapBoxes(minX, minY, minZ, maxX, maxY, maxZ) {

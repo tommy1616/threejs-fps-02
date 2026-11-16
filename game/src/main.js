@@ -7,11 +7,14 @@ import { createFixedLoop } from './loop.js';
 import { applyLook, stepPlayer } from './player.js';
 import { stepWeapons } from './weapon.js';
 import { pushKillFeed, stepCombat } from './combat.js';
+import { stepBots } from './bots.js';
+import { restartMatch, startMatch, stepRounds } from './rounds.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedShot = params.get('shot');
 const shot = requestedShot === 'start' || requestedShot === 'play' || requestedShot === 'end' ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
+const testMode = params.get('test') === '1';
 
 const state = createGameState(seed);
 const hud = createHud();
@@ -124,43 +127,82 @@ function setupPlayShot() {
   setTracer(1, -2.4, 1.31, 10.6, 1.4, 1.2, 6.2);
 }
 
+function advanceWorld(state, dt) {
+  state.tick += 1;
+  state.time += dt;
+  for (let index = 0; index < state.actors.length; index += 1) {
+    const actor = state.actors[index];
+    actor.prevPosition.copy(actor.position);
+    actor.prevYaw = actor.yaw;
+    actor.prevPitch = actor.pitch;
+  }
+  if (state.phase === 'live') stepBots(state, dt);
+  stepCombat(state, dt);
+  stepRounds(state, dt);
+  state.ui.hitMarker = Math.max(0, state.ui.hitMarker - dt);
+  state.ui.messageTime = Math.max(0, state.ui.messageTime - dt);
+}
+
 function setupEndShot() {
-  state.phase = 'roundEnd';
-  state.view.mode = 'player';
-  state.ui.hudVisible = true;
+  startMatch(state);
+  let elapsed = 0;
+  while (state.phase !== 'roundEnd' && elapsed < 126) {
+    advanceWorld(state, CONFIG.fixedDt);
+    elapsed += CONFIG.fixedDt;
+  }
   state.ui.overlay = 'roundEnd';
-  state.match.round = 4;
-  state.match.phaseTime = 0;
-  state.match.score.vanguard = 1;
-  state.match.score.syndicate = 0;
-  state.match.winner = 'vanguard';
-  state.match.reason = 'Surge charge defused at Brine Hall.';
-  state.objective.state = 'defused';
-  state.objective.site = 'A';
+  state.ui.hudVisible = true;
+  state.view.mode = 'player';
+  if (state.match.phaseTime <= 0) state.match.phaseTime = CONFIG.round.roundEndSeconds;
 
   const player = state.player;
-  placeActor(player, -11.5, -6.5, 1.14, -0.04);
-  player.health = 63;
-  player.armor = 48;
-  player.money = 3400;
-  player.slots[0].mag = 11;
-  player.slots[0].reserve = 33;
+  player.alive = true;
+  player.health = Math.max(player.health, 55);
+  player.position.set(-11.5, 0, -6.5);
+  player.prevPosition.copy(player.position);
+  player.yaw = 1.14;
+  player.prevYaw = 1.14;
+  player.pitch = -0.04;
+  player.prevPitch = -0.04;
+}
 
-  const friends = state.actors.filter((actor) => actor.team === 'vanguard' && !actor.isPlayer);
-  const spots = [
-    [-15.7, -8.2, 2.4],
-    [-14.2, -10.5, 1.6],
-    [-18.5, -11.5, 0.5],
-    [-13, -7, 2.0],
-  ];
-  for (let index = 0; index < friends.length; index += 1) {
-    const spot = spots[index];
-    placeActor(friends[index], spot[0], spot[1], spot[2]);
+function setupTest() {
+  startMatch(state);
+  let elapsed = 0;
+  let moved = false;
+  while (elapsed < 30) {
+    advanceWorld(state, CONFIG.fixedDt);
+    elapsed += CONFIG.fixedDt;
+    for (let index = 0; index < state.bots.length; index += 1) {
+      const bot = state.bots[index];
+      if (Math.hypot(bot.position.x - bot.spawn.x, bot.position.z - bot.spawn.z) > 2.5) moved = true;
+    }
   }
-
-  for (const actor of state.actors) {
-    if (actor.team === 'syndicate') actor.alive = false;
+  let kills = 0;
+  let vanguardAlive = 0;
+  let syndicateAlive = 0;
+  for (let index = 0; index < state.actors.length; index += 1) {
+    const actor = state.actors[index];
+    kills += actor.deaths;
+    if (!actor.alive) continue;
+    if (actor.team === 'vanguard') vanguardAlive += 1;
+    else syndicateAlive += 1;
   }
+  const summary = {
+    seed: state.seed,
+    phase: state.phase,
+    moved,
+    kills,
+    score: `${state.match.score.vanguard}-${state.match.score.syndicate}`,
+    alive: `${vanguardAlive}-${syndicateAlive}`,
+    bots: state.bots.length,
+  };
+  document.title = `BOTS ${JSON.stringify(summary)}`;
+  document.body.dataset.summary = JSON.stringify(summary);
+  state.ui.overlay = 'none';
+  state.ui.hudVisible = true;
+  state.view.mode = 'player';
+  frozen = true;
 }
 
 function setupStartShot() {
@@ -173,6 +215,7 @@ function setupStartShot() {
 if (shot === 'play') setupPlayShot();
 else if (shot === 'end') setupEndShot();
 else if (shot === 'start') setupStartShot();
+if (testMode) setupTest();
 
 const world = createWorld(document.getElementById('game'), state);
 const input = shot ? null : createInput(world.domElement, onLockChange);
@@ -189,10 +232,9 @@ window.__game = Object.freeze({
 function onLockChange(locked) {
   if (shot) return;
   if (locked) {
-    started = true;
-    if (state.phase === 'menu') {
-      state.phase = 'live';
-      state.match.phaseTime = CONFIG.round.liveSeconds;
+    if (!started) {
+      started = true;
+      startMatch(state);
     }
     state.ui.overlay = 'none';
     state.ui.hudVisible = true;
@@ -205,6 +247,7 @@ function onLockChange(locked) {
 
 hud.onDeploy(() => {
   if (shot || !input) return;
+  if (state.phase === 'matchOver') restartMatch(state);
   input.requestLock();
 });
 
@@ -219,13 +262,17 @@ function beginFrame() {
   } else {
     state.ui.buyOpen = false;
   }
+  if (snapshot.enterPressed && state.phase === 'matchOver') restartMatch(state);
+  snapshot.enterPressed = false;
   snapshot.buyPressed = false;
   snapshot.lookDX = 0;
   snapshot.lookDY = 0;
 }
 
 function simulate(state, dt) {
-  if (frozen || state.ui.overlay !== 'none') return;
+  if (frozen) return;
+  const overlay = state.ui.overlay;
+  if (overlay === 'menu' || overlay === 'pause' || overlay === 'matchOver') return;
   state.tick += 1;
   state.time += dt;
 
@@ -236,12 +283,15 @@ function simulate(state, dt) {
     actor.prevPitch = actor.pitch;
   }
 
-  if (snapshot) {
-    stepPlayer(state, snapshot, dt);
-    stepWeapons(state, snapshot, dt);
+  if (state.phase === 'live') {
+    if (snapshot) {
+      stepPlayer(state, snapshot, dt);
+      stepWeapons(state, snapshot, dt);
+    }
+    stepBots(state, dt);
   }
   stepCombat(state, dt);
-  if (state.phase === 'live') state.match.phaseTime = Math.max(0, state.match.phaseTime - dt);
+  stepRounds(state, dt);
   state.ui.hitMarker = Math.max(0, state.ui.hitMarker - dt);
   state.ui.messageTime = Math.max(0, state.ui.messageTime - dt);
 }

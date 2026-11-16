@@ -76,7 +76,7 @@ export function createHud() {
     if (mode === 'menu') {
       setText(eyebrow, 'TACTICAL 5V5 · ORIGINAL MAP');
       setText(title, 'SALTWORKS');
-      setText(copy, 'Vanguard holds the brine line. Syndicate wants the relay. Five on five, first to seven rounds.');
+      setText(copy, 'Vanguard holds the brine line. Syndicate wants the relay. Five on five, first to eight rounds.');
       setText(play, 'Deploy');
       overlayScore.hidden = true;
       overlayKeys.hidden = false;
@@ -90,6 +90,18 @@ export function createHud() {
       setText(play, 'Resume');
       overlayScore.hidden = true;
       overlayKeys.hidden = false;
+      return;
+    }
+
+    if (mode === 'matchOver') {
+      setText(eyebrow, 'MATCH COMPLETE · SALTWORKS');
+      if (state.match.winner === 'vanguard') setText(title, 'VANGUARD WINS THE MATCH');
+      else setText(title, 'SYNDICATE WINS THE MATCH');
+      setText(copy, 'First to eight rounds. Press Enter or click below to redeploy.');
+      overlayScore.hidden = false;
+      setText(overlayScore, `${state.match.score.vanguard} — ${state.match.score.syndicate}`);
+      setText(play, 'Play again');
+      overlayKeys.hidden = true;
       return;
     }
 
@@ -132,7 +144,7 @@ export function createHud() {
     setText(weaponName, weapon.name.toUpperCase());
     setText(ammoMag, String(weapon.mag));
     setText(ammoReserve, `/ ${weapon.reserve}`);
-    setText(phaseLabel, state.phase === 'live' ? 'LIVE' : state.phase === 'buy' ? 'BUY PHASE' : state.phase === 'roundEnd' ? 'ROUND OVER' : 'BRIEFING');
+    setText(phaseLabel, state.phase === 'live' ? 'LIVE' : state.phase === 'freeze' ? 'FREEZE' : state.phase === 'roundEnd' ? 'ROUND OVER' : state.phase === 'matchOver' ? 'MATCH OVER' : 'BRIEFING');
     setText(centerMessage, weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '');
 
     const scale = Math.min(3.2, 1 + player.spread * 90);

@@ -25,6 +25,7 @@ function makeWeapons() {
     ...def,
     mag: def.magazine,
     reserve: def.reserve,
+    reserveMax: def.reserve,
     reloadLeft: 0,
     fireCooldown: 0,
     emptyClick: 0,
@@ -41,6 +42,7 @@ function createActor(id, name, team, isPlayer, spawn, role) {
     team,
     isPlayer,
     role,
+    spawn: { x: spawn.x, z: spawn.z, yaw: spawn.yaw },
     position,
     prevPosition: position.clone(),
     velocity: new THREE.Vector3(),
@@ -64,6 +66,22 @@ function createActor(id, name, team, isPlayer, spawn, role) {
     recoilPitch: 0,
     recoilYaw: 0,
     lastAttackerId: null,
+    ai: {
+      state: 'patrol',
+      route: [],
+      routeIndex: 0,
+      targetId: null,
+      holdNode: null,
+      holdYaw: spawn.yaw,
+      reaction: 0,
+      trackTime: 0,
+      aimError: CONFIG.bots.aimError,
+      think: 0,
+      searchTime: 0,
+      lastSeenX: spawn.x,
+      lastSeenZ: spawn.z,
+      strafe: 1,
+    },
   };
 }
 
@@ -96,6 +114,20 @@ function createImpacts() {
     maxLife: 0,
     kind: 'wall',
   }));
+}
+
+function createNoises() {
+  return {
+    head: 0,
+    items: Array.from({ length: 24 }, () => ({
+      active: false,
+      x: 0,
+      z: 0,
+      team: null,
+      actorId: null,
+      ttl: 0,
+    })),
+  };
 }
 
 function createKillFeed() {
@@ -199,6 +231,7 @@ export function createGameState(seed = 1) {
     },
     tracers: createTracers(),
     impacts: createImpacts(),
+    noises: createNoises(),
     killFeed: createKillFeed(),
     events: [],
     stats: {

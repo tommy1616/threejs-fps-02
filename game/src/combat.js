@@ -1,3 +1,5 @@
+import { CONFIG } from './config.js';
+
 const FEED_SECONDS = 6;
 
 export function pushKillFeed(state, killer, victim, weapon, headshot) {
@@ -32,7 +34,10 @@ export function applyDamage(state, victim, amount, attacker, weaponName, part) {
   victim.alive = false;
   victim.deaths += 1;
   victim.velocity.set(0, 0, 0);
-  if (attacker && attacker !== victim) attacker.kills += 1;
+  if (attacker && attacker !== victim) {
+    attacker.kills += 1;
+    attacker.money = Math.min(CONFIG.economy.maxMoney, attacker.money + CONFIG.economy.killReward);
+  }
   pushKillFeed(state, attacker, victim, weaponName, part === 'head');
   return true;
 }
@@ -44,5 +49,12 @@ export function stepCombat(state, dt) {
     if (!entry.active) continue;
     entry.ttl -= dt;
     if (entry.ttl <= 0) entry.active = false;
+  }
+  const noises = state.noises.items;
+  for (let index = 0; index < noises.length; index += 1) {
+    const noise = noises[index];
+    if (!noise.active) continue;
+    noise.ttl -= dt;
+    if (noise.ttl <= 0) noise.active = false;
   }
 }

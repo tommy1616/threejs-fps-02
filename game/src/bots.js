@@ -1,0 +1,303 @@
+import { CONFIG } from './config.js';
+import { MAP, createRayHit, raycastSolids } from './map.js';
+import { moveActor } from './player.js';
+import { fireHitscan, startReload } from './weapon.js';
+
+const NODES = new Map(MAP.waypoints.map((node) => [node.id, node]));
+const sight = createRayHit();
+const MOVE = CONFIG.movement;
+const BOTS = CONFIG.bots;
+
+const DEFENDER_HOLDS = ['aShort', 'aSite', 'mN', 'bShort'];
+const ATTACKER_TARGETS = ['aSite', 'aSite', 'bSite', 'bSite', 'aSite'];
+
+function clamp(value, min, max) {
+  return value < min ? min : value > max ? max : value;
+}
+
+function nearestNode(x, z) {
+  let best = MAP.waypoints[0];
+  let bestDistance = Infinity;
+  for (let index = 0; index < MAP.waypoints.length; index += 1) {
+    const node = MAP.waypoints[index];
+    const dx = node.x - x;
+    const dz = node.z - z;
+    const distance = dx * dx + dz * dz;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = node;
+    }
+  }
+  return best;
+}
+
+function pathTo(fromX, fromZ, targetId) {
+  const start = nearestNode(fromX, fromZ).id;
+  if (start === targetId) return [targetId];
+  const queue = [start];
+  const previous = new Map([[start, null]]);
+  let found = false;
+  for (let index = 0; index < queue.length && !found; index += 1) {
+    const id = queue[index];
+    const node = NODES.get(id);
+    for (let link = 0; link < node.links.length; link += 1) {
+      const next = node.links[link];
+      if (previous.has(next)) continue;
+      previous.set(next, id);
+      if (next === targetId) { found = true; break; }
+      queue.push(next);
+    }
+  }
+  if (!previous.has(targetId)) return [];
+  const path = [];
+  let cursor = targetId;
+  while (cursor) {
+    path.push(cursor);
+    cursor = previous.get(cursor);
+  }
+  path.reverse();
+  return path;
+}
+
+function holdYawFor(nodeId) {
+  if (nodeId === 'aSite') return -Math.PI * 0.5;
+  if (nodeId === 'bSite') return Math.PI * 0.5;
+  if (nodeId === 'aShort') return -0.6;
+  if (nodeId === 'bShort') return 0.6;
+  return Math.PI;
+}
+
+function turnToward(current, target, maxStep) {
+  let delta = (target - current) % (Math.PI * 2);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  else if (delta < -Math.PI) delta += Math.PI * 2;
+  return current + clamp(delta, -maxStep, maxStep);
+}
+
+export function resetBots(state) {
+  let vanguardIndex = 0;
+  let syndicateIndex = 0;
+  for (let index = 0; index < state.bots.length; index += 1) {
+    const bot = state.bots[index];
+    let target;
+    if (bot.team === 'vanguard') {
+      target = DEFENDER_HOLDS[vanguardIndex % DEFENDER_HOLDS.length];
+      vanguardIndex += 1;
+    } else {
+      target = ATTACKER_TARGETS[syndicateIndex % ATTACKER_TARGETS.length];
+      syndicateIndex += 1;
+    }
+    const ai = bot.ai;
+    ai.state = 'patrol';
+    ai.targetId = null;
+    ai.route = pathTo(bot.spawn.x, bot.spawn.z, target);
+    ai.routeIndex = 0;
+    ai.holdNode = target;
+    ai.holdYaw = holdYawFor(target);
+    ai.reaction = 0;
+    ai.trackTime = 0;
+    ai.aimError = BOTS.aimError;
+    ai.think = state.rng() * 0.12;
+    ai.searchTime = 0;
+    ai.lastSeenX = bot.spawn.x;
+    ai.lastSeenZ = bot.spawn.z;
+    ai.strafe = state.rng() < 0.5 ? -1 : 1;
+  }
+}
+
+function canSee(state, bot, target) {
+  const eyeY = bot.position.y + bot.eye;
+  const tx = target.position.x;
+  const ty = target.position.y + target.eye - 0.12;
+  const tz = target.position.z;
+  const dx = tx - bot.position.x;
+  const dy = ty - eyeY;
+  const dz = tz - bot.position.z;
+  const distance = Math.hypot(dx, dy, dz);
+  if (distance < 0.01 || distance > BOTS.viewDistance) return false;
+  raycastSolids(bot.position.x, eyeY, bot.position.z, dx / distance, dy / distance, dz / distance, distance, sight);
+  return !sight.hit || sight.distance >= distance - 0.4;
+}
+
+function acquireTarget(state, bot) {
+  const fx = -Math.sin(bot.yaw);
+  const fz = -Math.cos(bot.yaw);
+  const cosHalfFov = Math.cos(BOTS.fov * 0.5);
+  let best = null;
+  let bestDistance = BOTS.viewDistance;
+
+  for (let index = 0; index < state.actors.length; index += 1) {
+    const target = state.actors[index];
+    if (!target.alive || target.team === bot.team) continue;
+    const dx = target.position.x - bot.position.x;
+    const dz = target.position.z - bot.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance > bestDistance || distance < 0.01) continue;
+    const dot = (dx * fx + dz * fz) / distance;
+    if (dot < cosHalfFov) continue;
+    if (!canSee(state, bot, target)) continue;
+    best = target;
+    bestDistance = distance;
+  }
+  return best;
+}
+
+function hearNoise(state, bot) {
+  const noises = state.noises.items;
+  for (let index = 0; index < noises.length; index += 1) {
+    const noise = noises[index];
+    if (!noise.active || noise.ttl <= 0 || noise.team === bot.team) continue;
+    const dx = noise.x - bot.position.x;
+    const dz = noise.z - bot.position.z;
+    if (Math.hypot(dx, dz) > BOTS.hearingRadius) continue;
+    bot.ai.state = 'search';
+    bot.ai.targetId = null;
+    bot.ai.lastSeenX = noise.x;
+    bot.ai.lastSeenZ = noise.z;
+    bot.ai.searchTime = 3;
+    bot.ai.route = pathTo(bot.position.x, bot.position.z, nearestNode(noise.x, noise.z).id);
+    bot.ai.routeIndex = 0;
+    return;
+  }
+}
+
+function stepRoute(bot, dt) {
+  const ai = bot.ai;
+  const node = ai.routeIndex < ai.route.length ? NODES.get(ai.route[ai.routeIndex]) : null;
+  if (!node) {
+    if (ai.state === 'patrol') ai.state = 'hold';
+    return false;
+  }
+  const dx = node.x - bot.position.x;
+  const dz = node.z - bot.position.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance < 1.2) {
+    ai.routeIndex += 1;
+    if (ai.routeIndex >= ai.route.length) {
+      ai.state = ai.state === 'search' ? 'search' : 'hold';
+      return false;
+    }
+    return true;
+  }
+  const inv = 1 / distance;
+  moveActor(bot, dx * inv, dz * inv, MOVE.walkSpeed * 0.82, dt, false);
+  bot.yaw = turnToward(bot.yaw, Math.atan2(-dx, -dz), dt * 5.5);
+  return true;
+}
+
+function aimAt(bot, target, dt, rng) {
+  const eyeY = bot.position.y + bot.eye;
+  const dx = target.position.x - bot.position.x;
+  const dy = target.position.y + target.eye * 0.72 - eyeY;
+  const dz = target.position.z - bot.position.z;
+  const length = Math.hypot(dx, dy, dz) || 1;
+  const error = bot.ai.aimError;
+  const jitterX = (rng() * 2 - 1) * error;
+  const jitterY = (rng() * 2 - 1) * error;
+  const desiredYaw = Math.atan2(-dx, -dz) + jitterX;
+  const desiredPitch = Math.asin(clamp(dy / length, -1, 1)) + jitterY;
+  bot.yaw = turnToward(bot.yaw, desiredYaw, dt * 9);
+  bot.pitch = clamp(turnToward(bot.pitch, desiredPitch, dt * 9), -CONFIG.view.pitchLimit, CONFIG.view.pitchLimit);
+}
+
+export function stepBots(state, dt) {
+  for (let index = 0; index < state.bots.length; index += 1) {
+    const bot = state.bots[index];
+    const ai = bot.ai;
+    if (!bot.alive) {
+      ai.state = 'dead';
+      continue;
+    }
+
+    const weapon = bot.slots[bot.slot];
+    weapon.fireCooldown = Math.max(0, weapon.fireCooldown - dt);
+    weapon.muzzleFlash = Math.max(0, weapon.muzzleFlash - dt);
+    weapon.kick += (0 - weapon.kick) * Math.min(1, dt * 18);
+    bot.recoilPitch += (0 - bot.recoilPitch) * Math.min(1, dt * weapon.recoilRecovery);
+    bot.recoilYaw += (0 - bot.recoilYaw) * Math.min(1, dt * weapon.recoilRecovery);
+    bot.spread += (weapon.baseSpread - bot.spread) * Math.min(1, dt * weapon.spreadRecovery);
+
+    if (weapon.reloadLeft > 0) {
+      weapon.reloadLeft = Math.max(0, weapon.reloadLeft - dt);
+      if (weapon.reloadLeft === 0) {
+        const taken = Math.min(weapon.magazine - weapon.mag, weapon.reserve);
+        weapon.mag += taken;
+        weapon.reserve -= taken;
+      }
+    }
+
+    ai.think -= dt;
+    if (ai.think <= 0) {
+      ai.think = 0.1 + state.rng() * 0.06;
+      const seen = acquireTarget(state, bot);
+      if (seen) {
+        if (ai.targetId !== seen.id) {
+          ai.targetId = seen.id;
+          ai.reaction = BOTS.reactionTime * (0.75 + state.rng() * 0.55);
+          ai.aimError = BOTS.aimError * 1.7;
+          ai.trackTime = 0;
+        }
+        ai.state = 'engage';
+        ai.lastSeenX = seen.position.x;
+        ai.lastSeenZ = seen.position.z;
+      } else if (ai.state !== 'search') {
+        if (ai.state === 'engage') {
+          ai.state = 'search';
+          ai.targetId = null;
+          ai.searchTime = 3.2;
+          ai.route = pathTo(bot.position.x, bot.position.z, nearestNode(ai.lastSeenX, ai.lastSeenZ).id);
+          ai.routeIndex = 0;
+        } else {
+          hearNoise(state, bot);
+        }
+      }
+    }
+
+    let target = null;
+    if (ai.targetId) {
+      for (let actorIndex = 0; actorIndex < state.actors.length; actorIndex += 1) {
+        const actor = state.actors[actorIndex];
+        if (actor.id === ai.targetId && actor.alive) { target = actor; break; }
+      }
+    }
+
+    if (target && canSee(state, bot, target)) {
+      ai.state = 'engage';
+      ai.trackTime += dt;
+      ai.reaction = Math.max(0, ai.reaction - dt);
+      ai.aimError = Math.max(0.0035, ai.aimError * Math.max(0, 1 - dt * 1.9));
+      aimAt(bot, target, dt, state.rng);
+      if (ai.reaction <= 0 && weapon.reloadLeft === 0) {
+        if (weapon.mag > 0) {
+          if (weapon.fireCooldown <= 0) fireHitscan(state, bot, weapon);
+        } else if (weapon.reserve > 0) {
+          startReload(state, bot, true);
+        }
+      }
+    } else {
+      if (ai.state === 'engage') {
+        ai.state = 'search';
+        ai.targetId = null;
+        ai.searchTime = 3.2;
+        ai.route = pathTo(bot.position.x, bot.position.z, nearestNode(ai.lastSeenX, ai.lastSeenZ).id);
+        ai.routeIndex = 0;
+      }
+      if (ai.state === 'search') {
+        ai.searchTime -= dt;
+        const moving = stepRoute(bot, dt);
+        if (!moving && ai.searchTime <= 0) {
+          ai.state = 'patrol';
+          ai.route = pathTo(bot.position.x, bot.position.z, ai.holdNode);
+          ai.routeIndex = 0;
+        }
+      } else {
+        const moving = stepRoute(bot, dt);
+        if (!moving) {
+          const scan = Math.sin(state.time * 0.7 + index * 1.3) * 0.42;
+          bot.yaw = turnToward(bot.yaw, ai.holdYaw + scan, dt * 2.2);
+          bot.pitch += (0 - bot.pitch) * Math.min(1, dt * 4);
+        }
+      }
+    }
+  }
+}

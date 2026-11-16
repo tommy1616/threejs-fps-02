@@ -42,14 +42,15 @@ export const CONFIG = deepFreeze({
     crouchLerp: 12,
   },
   round: {
+    freezeSeconds: 5,
     buySeconds: 12,
-    liveSeconds: 105,
+    liveSeconds: 115,
     roundEndSeconds: 5,
     warmupSeconds: 4,
     plantSeconds: 3.2,
     defuseSeconds: 5,
     postPlantSeconds: 40,
-    roundsToWin: 7,
+    roundsToWin: 8,
     regulationRounds: 12,
   },
   economy: {

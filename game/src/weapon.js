@@ -127,6 +127,18 @@ function addTracer(state, sx, sy, sz, dx, dy, dz, length, team) {
   }
 }
 
+function addNoise(state, actor) {
+  const noises = state.noises;
+  const noise = noises.items[noises.head];
+  noise.active = true;
+  noise.x = actor.position.x;
+  noise.z = actor.position.z;
+  noise.team = actor.team;
+  noise.actorId = actor.id;
+  noise.ttl = 1.4;
+  noises.head = (noises.head + 1) % noises.items.length;
+}
+
 function addImpact(state, x, y, z, nx, ny, nz, kind) {
   for (let index = 0; index < state.impacts.length; index += 1) {
     const impact = state.impacts[index];
@@ -173,7 +185,7 @@ function computeAim(state, actor) {
   }
 }
 
-function fire(state, actor, weapon) {
+export function fireHitscan(state, actor, weapon) {
   weapon.mag -= 1;
   weapon.fireCooldown = weapon.fireInterval;
   weapon.kick = 1;
@@ -181,7 +193,8 @@ function fire(state, actor, weapon) {
   actor.spread = Math.min(weapon.spreadMax, actor.spread + weapon.spreadPerShot);
   actor.recoilPitch += weapon.recoilPitch;
   actor.recoilYaw += (state.rng() * 2 - 1) * weapon.recoilYaw;
-  state.stats.shotsFired += 1;
+  if (actor.isPlayer) state.stats.shotsFired += 1;
+  addNoise(state, actor);
 
   computeAim(state, actor);
   const eyeY = actor.position.y + actor.eye;
@@ -206,8 +219,10 @@ function fire(state, actor, weapon) {
   if (hit.actor) {
     const damage = weapon.damage * (hit.part === 'head' ? weapon.headshotMultiplier : 1);
     applyDamage(state, hit.actor, damage, actor, weapon.name, hit.part);
-    state.stats.shotsHit += 1;
-    state.ui.hitMarker = CONFIG.hud.hitMarkerSeconds;
+    if (actor.isPlayer) {
+      state.stats.shotsHit += 1;
+      state.ui.hitMarker = CONFIG.hud.hitMarkerSeconds;
+    }
     endX = hit.x;
     endY = hit.y;
     endZ = hit.z;
@@ -226,13 +241,15 @@ function fire(state, actor, weapon) {
   addTracer(state, startX, startY, startZ, dir.x, dir.y, dir.z, length, actor.team);
 }
 
-export function startReload(state, actor) {
+export function startReload(state, actor, silent = false) {
   const weapon = actor.slots[actor.slot];
   if (weapon.reloadLeft > 0 || weapon.mag >= weapon.magazine || weapon.reserve <= 0) return false;
   weapon.reloadLeft = weapon.reloadTime;
   weapon.emptyClick = 0;
-  state.ui.message = 'RELOADING';
-  state.ui.messageTime = weapon.reloadTime;
+  if (actor.isPlayer && !silent) {
+    state.ui.message = 'RELOADING';
+    state.ui.messageTime = weapon.reloadTime;
+  }
   return true;
 }
 
@@ -281,7 +298,7 @@ export function stepWeapons(state, input, dt) {
         state.ui.messageTime = 0.9;
       }
     } else if (weapon.fireCooldown <= 0) {
-      fire(state, player, weapon);
+      fireHitscan(state, player, weapon);
     }
   }
   if (!weapon.automatic) input.firePressed = false;

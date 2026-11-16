@@ -8,6 +8,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     buy: false,
     slot: 0,
     firePressed: false,
+    enter: false,
   };
   const snapshot = {
     forward: 0,
@@ -18,6 +19,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     reloadPressed: false,
     buyPressed: false,
     slotPressed: 0,
+    enterPressed: false,
     fire: false,
     firePressed: false,
     lookDX: 0,
@@ -34,6 +36,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     else if (code === 'Digit1') pending.slot = 1;
     else if (code === 'Digit2') pending.slot = 2;
     else if (code === 'Digit3') pending.slot = 3;
+    else if (code === 'Enter') pending.enter = true;
   }
 
   function onKeyDown(event) {
@@ -100,6 +103,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     snapshot.reloadPressed = pending.reload;
     snapshot.buyPressed = pending.buy;
     snapshot.slotPressed = pending.slot;
+    snapshot.enterPressed = pending.enter;
     snapshot.fire = firing;
     snapshot.firePressed = pending.firePressed;
     snapshot.lookDX = pending.lookX;
@@ -109,6 +113,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     pending.reload = false;
     pending.buy = false;
     pending.slot = 0;
+    pending.enter = false;
     pending.firePressed = false;
     pending.lookX = 0;
     pending.lookY = 0;
