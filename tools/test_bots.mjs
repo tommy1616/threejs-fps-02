@@ -48,9 +48,36 @@ try {
     console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
     console.log(`  V: ${round.v} | S: ${round.s}`);
   }
+  const average = rounds.reduce((sum, round) => sum + round.liveTime, 0) / (rounds.length || 1);
+  const reasons = { elimination: 0, detonation: 0, defuse: 0, time: 0 };
+  const winners = {};
+  for (const round of rounds) {
+    if (/detonated/.test(round.reason)) reasons.detonation += 1;
+    else if (/defused/.test(round.reason)) reasons.defuse += 1;
+    else if (/Time expired/.test(round.reason)) reasons.time += 1;
+    else reasons.elimination += 1;
+    winners[round.winner] = (winners[round.winner] || 0) + 1;
+  }
+  console.log(`average live=${average.toFixed(1)}s reasons=${JSON.stringify(reasons)} winners=${JSON.stringify(winners)}`);
   console.log(`moved=${summary.moved} autoNext=${summary.autoNext} respawnFull=${summary.respawnFull}`);
-  if (rounds.length < 4) {
+  if (rounds.length < 6) {
     console.error(`FAIL: only ${rounds.length} rounds simulated`);
+    failed = true;
+  }
+  if (average < 50 || average > 110) {
+    console.error(`FAIL: average live time ${average.toFixed(1)}s outside 50-110s`);
+    failed = true;
+  }
+  if (!rounds.some((round) => round.planted)) {
+    console.error('FAIL: no charge was planted');
+    failed = true;
+  }
+  if (Object.keys(winners).length < 2) {
+    console.error('FAIL: both teams did not win a round');
+    failed = true;
+  }
+  if (Object.values(reasons).filter((count) => count > 0).length < 2) {
+    console.error('FAIL: win reasons did not vary');
     failed = true;
   }
   if (!rounds.some((round) => /detonated|defused/.test(round.reason))) {
