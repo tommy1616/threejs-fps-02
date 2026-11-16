@@ -168,33 +168,64 @@ function setupEndShot() {
 
 function setupTest() {
   startMatch(state);
+  const rounds = [];
   let elapsed = 0;
+  let liveElapsed = 0;
   let moved = false;
-  while (elapsed < 30) {
+  let autoNext = false;
+  let respawnFull = true;
+  let deathsMark = 0;
+
+  while (rounds.length < 3 && elapsed < 600) {
+    const previousPhase = state.phase;
+    if (state.phase === 'live') liveElapsed += CONFIG.fixedDt;
     advanceWorld(state, CONFIG.fixedDt);
     elapsed += CONFIG.fixedDt;
+
     for (let index = 0; index < state.bots.length; index += 1) {
       const bot = state.bots[index];
       if (Math.hypot(bot.position.x - bot.spawn.x, bot.position.z - bot.spawn.z) > 2.5) moved = true;
     }
+
+    if (previousPhase === 'roundEnd' && state.phase === 'freeze') {
+      autoNext = true;
+      for (let index = 0; index < state.actors.length; index += 1) {
+        const actor = state.actors[index];
+        if (!actor.alive || actor.health !== 100) respawnFull = false;
+      }
+    }
+
+    if (state.phase === 'roundEnd' && previousPhase !== 'roundEnd') {
+      let totalDeaths = 0;
+      let vanguardAlive = 0;
+      let syndicateAlive = 0;
+      for (let index = 0; index < state.actors.length; index += 1) {
+        const actor = state.actors[index];
+        totalDeaths += actor.deaths;
+        if (!actor.alive) continue;
+        if (actor.team === 'vanguard') vanguardAlive += 1;
+        else syndicateAlive += 1;
+      }
+      rounds.push({
+        round: state.match.round,
+        winner: state.match.winner,
+        reason: state.match.reason,
+        liveTime: Number(liveElapsed.toFixed(1)),
+        kills: totalDeaths - deathsMark,
+        alive: `${vanguardAlive}-${syndicateAlive}`,
+      });
+      deathsMark = totalDeaths;
+      liveElapsed = 0;
+    }
   }
-  let kills = 0;
-  let vanguardAlive = 0;
-  let syndicateAlive = 0;
-  for (let index = 0; index < state.actors.length; index += 1) {
-    const actor = state.actors[index];
-    kills += actor.deaths;
-    if (!actor.alive) continue;
-    if (actor.team === 'vanguard') vanguardAlive += 1;
-    else syndicateAlive += 1;
-  }
+
   const summary = {
     seed: state.seed,
-    phase: state.phase,
+    rounds,
     moved,
-    kills,
-    score: `${state.match.score.vanguard}-${state.match.score.syndicate}`,
-    alive: `${vanguardAlive}-${syndicateAlive}`,
+    autoNext: autoNext && rounds.length >= 3,
+    respawnFull,
+    phase: state.phase,
     bots: state.bots.length,
   };
   document.title = `BOTS ${JSON.stringify(summary)}`;

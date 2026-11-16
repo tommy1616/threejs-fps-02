@@ -74,6 +74,85 @@ function turnToward(current, target, maxStep) {
   return current + clamp(delta, -maxStep, maxStep);
 }
 
+function countAlive(state, team) {
+  let count = 0;
+  for (let index = 0; index < state.actors.length; index += 1) {
+    const actor = state.actors[index];
+    if (actor.alive && actor.team === team) count += 1;
+  }
+  return count;
+}
+
+function nearestEnemy(state, bot) {
+  let best = null;
+  let bestDistance = Infinity;
+  for (let index = 0; index < state.actors.length; index += 1) {
+    const actor = state.actors[index];
+    if (!actor.alive || actor.team === bot.team) continue;
+    const distance = Math.hypot(actor.position.x - bot.position.x, actor.position.z - bot.position.z);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = actor;
+    }
+  }
+  return best;
+}
+
+function shouldHunt(state, bot) {
+  const enemyTeam = bot.team === 'vanguard' ? 'syndicate' : 'vanguard';
+  if (countAlive(state, bot.team) > countAlive(state, enemyTeam)) return true;
+  if (state.match.phaseTime < 45) return true;
+  return false;
+}
+
+function chooseAdvanceNode(state, bot, hunt) {
+  const ai = bot.ai;
+  let target = ai.objectiveNode || ai.holdNode || 'mC';
+  if (hunt) {
+    const enemy = nearestEnemy(state, bot);
+    if (enemy) target = nearestNode(enemy.position.x, enemy.position.z).id;
+  }
+  const here = nearestNode(bot.position.x, bot.position.z).id;
+  if (target === here) {
+    target = target === 'aSite' ? 'bSite' : target === 'bSite' ? 'aSite'
+      : ai.objectiveNode === 'bSite' ? 'aSite' : 'bSite';
+  }
+  return target;
+}
+
+function setRoute(state, bot, targetId, nextState = 'patrol') {
+  const ai = bot.ai;
+  let route = pathTo(bot.position.x, bot.position.z, targetId);
+  if (route.length === 0) route = [targetId];
+  ai.route = route;
+  ai.routeIndex = 0;
+  ai.state = nextState;
+  ai.holdTimer = 0;
+  ai.stuckTimer = 0;
+  ai.stuckX = bot.position.x;
+  ai.stuckZ = bot.position.z;
+}
+
+function updateStuck(state, bot, dt) {
+  const ai = bot.ai;
+  if (ai.state === 'engage' || ai.state === 'hold') {
+    ai.stuckTimer = 0;
+    return;
+  }
+  ai.stuckTimer += dt;
+  if (ai.stuckTimer < 2) return;
+  const moved = Math.hypot(bot.position.x - ai.stuckX, bot.position.z - ai.stuckZ);
+  ai.stuckTimer = 0;
+  ai.stuckX = bot.position.x;
+  ai.stuckZ = bot.position.z;
+  if (moved > 0.6) return;
+  if (ai.routeIndex + 1 < ai.route.length) {
+    ai.routeIndex += 1;
+  } else {
+    setRoute(state, bot, chooseAdvanceNode(state, bot, shouldHunt(state, bot)), 'patrol');
+  }
+}
+
 export function resetBots(state) {
   let vanguardIndex = 0;
   let syndicateIndex = 0;
@@ -91,8 +170,10 @@ export function resetBots(state) {
     ai.state = 'patrol';
     ai.targetId = null;
     ai.route = pathTo(bot.spawn.x, bot.spawn.z, target);
+    if (ai.route.length === 0) ai.route = [target];
     ai.routeIndex = 0;
     ai.holdNode = target;
+    ai.objectiveNode = target === 'aShort' ? 'aSite' : target === 'bShort' ? 'bSite' : target;
     ai.holdYaw = holdYawFor(target);
     ai.reaction = 0;
     ai.trackTime = 0;
@@ -102,6 +183,10 @@ export function resetBots(state) {
     ai.lastSeenX = bot.spawn.x;
     ai.lastSeenZ = bot.spawn.z;
     ai.strafe = state.rng() < 0.5 ? -1 : 1;
+    ai.holdTimer = 0;
+    ai.stuckTimer = 0;
+    ai.stuckX = bot.spawn.x;
+    ai.stuckZ = bot.spawn.z;
   }
 }
 
@@ -165,7 +250,10 @@ function stepRoute(bot, dt) {
   const ai = bot.ai;
   const node = ai.routeIndex < ai.route.length ? NODES.get(ai.route[ai.routeIndex]) : null;
   if (!node) {
-    if (ai.state === 'patrol') ai.state = 'hold';
+    if (ai.state === 'patrol') {
+      ai.state = 'hold';
+      ai.holdTimer = 5;
+    }
     return false;
   }
   const dx = node.x - bot.position.x;
@@ -175,6 +263,7 @@ function stepRoute(bot, dt) {
     ai.routeIndex += 1;
     if (ai.routeIndex >= ai.route.length) {
       ai.state = ai.state === 'search' ? 'search' : 'hold';
+      if (ai.state === 'hold') ai.holdTimer = 5;
       return false;
     }
     return true;
@@ -284,11 +373,17 @@ export function stepBots(state, dt) {
       }
       if (ai.state === 'search') {
         ai.searchTime -= dt;
-        const moving = stepRoute(bot, dt);
-        if (!moving && ai.searchTime <= 0) {
-          ai.state = 'patrol';
-          ai.route = pathTo(bot.position.x, bot.position.z, ai.holdNode);
-          ai.routeIndex = 0;
+        if (!stepRoute(bot, dt) && ai.searchTime <= 0) {
+          setRoute(state, bot, chooseAdvanceNode(state, bot, true), 'patrol');
+        }
+      } else if (ai.state === 'hold') {
+        ai.holdTimer -= dt;
+        if (ai.holdTimer <= 0) {
+          setRoute(state, bot, chooseAdvanceNode(state, bot, shouldHunt(state, bot)), 'patrol');
+        } else {
+          const scan = Math.sin(state.time * 0.7 + index * 1.3) * 0.42;
+          bot.yaw = turnToward(bot.yaw, ai.holdYaw + scan, dt * 2.2);
+          bot.pitch += (0 - bot.pitch) * Math.min(1, dt * 4);
         }
       } else {
         const moving = stepRoute(bot, dt);
@@ -299,5 +394,7 @@ export function stepBots(state, dt) {
         }
       }
     }
+
+    updateStuck(state, bot, dt);
   }
 }

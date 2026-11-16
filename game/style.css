@@ -175,6 +175,17 @@ html, body {
 }
 #overlay-copy { margin: 0 0 22px; max-width: 44ch; font-size: 16px; line-height: 1.5; color: var(--salt); text-wrap: pretty; }
 #overlay-score { margin: 0 0 18px; font-family: var(--font-readout); font-size: 34px; letter-spacing: 0.12em; color: var(--accent); }
+.overlay[data-mode="roundEnd"] #overlay-panel,
+.overlay[data-mode="matchOver"] #overlay-panel { width: min(720px, 100%); }
+.overlay[data-mode="roundEnd"] #overlay-title,
+.overlay[data-mode="matchOver"] #overlay-title {
+  max-width: 18ch;
+  margin-bottom: 12px;
+  font-size: clamp(30px, 4.5vw, 58px);
+  line-height: 1.02;
+}
+.overlay[data-mode="roundEnd"] #overlay-copy,
+.overlay[data-mode="matchOver"] #overlay-copy { margin-bottom: 16px; }
 #play {
   font: inherit;
   font-size: 15px;
@@ -201,6 +212,12 @@ html, body {
   font-size: 10px;
   color: var(--salt);
   text-align: center;
+}
+
+@media (max-height: 640px) {
+  .overlay { padding: 5vh 6vw; }
+  .overlay[data-mode="roundEnd"] #overlay-title,
+  .overlay[data-mode="matchOver"] #overlay-title { font-size: clamp(28px, 4.2vw, 46px); }
 }
 
 @media (max-width: 760px) {

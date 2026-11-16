@@ -71,6 +71,7 @@ export function createHud() {
   function overlayMode(state) {
     const mode = state.ui.overlay;
     overlay.hidden = mode === 'none';
+    overlay.dataset.mode = mode;
     if (mode === 'none') return;
 
     if (mode === 'menu') {

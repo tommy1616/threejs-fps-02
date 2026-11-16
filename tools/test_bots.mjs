@@ -32,7 +32,7 @@ try {
     '--use-angle=swiftshader',
     '--enable-unsafe-swiftshader',
     '--window-size=1280,720',
-    '--virtual-time-budget=15000',
+    '--virtual-time-budget=30000',
     '--dump-dom',
     `http://127.0.0.1:${port}/?test=1&seed=1`,
   ], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
@@ -42,14 +42,33 @@ try {
   const match = title.match(/^BOTS (.*)$/s);
   if (!match) throw new Error(`summary missing from title: ${title}`);
   const summary = JSON.parse(match[1]);
-  console.log(JSON.stringify(summary, null, 2));
+  const rounds = summary.rounds ?? [];
+  for (const round of rounds) {
+    console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive})`);
+  }
+  console.log(`moved=${summary.moved} autoNext=${summary.autoNext} respawnFull=${summary.respawnFull}`);
+  if (rounds.length < 3) {
+    console.error(`FAIL: only ${rounds.length} rounds simulated`);
+    failed = true;
+  }
   if (!summary.moved) {
     console.error('FAIL: bots did not move');
     failed = true;
   }
-  if (summary.kills < 1) {
-    console.error('FAIL: no kills were scored');
+  if (!summary.autoNext) {
+    console.error('FAIL: next round did not start automatically');
     failed = true;
+  }
+  if (!summary.respawnFull) {
+    console.error('FAIL: respawns were not at full health');
+    failed = true;
+  }
+  for (const round of rounds) {
+    const alive = String(round.alive).split('-').map(Number);
+    if (String(round.reason).startsWith('Time expired') && alive[0] >= 2 && alive[1] >= 2) {
+      console.error(`FAIL: round ${round.round} timed out with both teams still alive (${round.alive})`);
+      failed = true;
+    }
   }
 } catch (error) {
   console.error(error.message);
