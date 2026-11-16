@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { PALETTE } from './palette.js';
 import { MAP } from './map.js';
+import { createViewmodels } from './viewmodel.js';
 
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
 const HEAD_GEO = new THREE.SphereGeometry(1, 14, 10);
@@ -145,94 +146,6 @@ function createBotView(actor, scene, materials) {
   return { actor, group };
 }
 
-function buildViewmodels(camera, materials) {
-  const views = [];
-
-  const rifle = new THREE.Group();
-  const receiver = mesh(UNIT_BOX, materials.steel);
-  receiver.scale.set(0.09, 0.1, 0.52);
-  rifle.add(receiver);
-  const barrel = mesh(UNIT_BOX, materials.ink);
-  barrel.scale.set(0.04, 0.04, 0.44);
-  barrel.position.set(0, 0.02, -0.46);
-  rifle.add(barrel);
-  const stock = mesh(UNIT_BOX, materials.crate);
-  stock.scale.set(0.08, 0.09, 0.24);
-  stock.position.set(0, -0.01, 0.36);
-  rifle.add(stock);
-  const mag = mesh(UNIT_BOX, materials.ink);
-  mag.scale.set(0.06, 0.18, 0.1);
-  mag.position.set(0, -0.13, -0.04);
-  rifle.add(mag);
-  const sight = mesh(UNIT_BOX, materials.vanguard);
-  sight.scale.set(0.025, 0.03, 0.12);
-  sight.position.set(0, 0.065, -0.1);
-  rifle.add(sight);
-  rifle.position.set(0.32, -0.3, -0.7);
-  rifle.scale.setScalar(0.74);
-  camera.add(rifle);
-  views.push({ group: rifle, baseX: 0.32, baseY: -0.3, baseZ: -0.7 });
-
-  const smg = new THREE.Group();
-  const smgBody = mesh(UNIT_BOX, materials.ink);
-  smgBody.scale.set(0.08, 0.09, 0.34);
-  smg.add(smgBody);
-  const smgBarrel = mesh(UNIT_BOX, materials.steel);
-  smgBarrel.scale.set(0.035, 0.035, 0.24);
-  smgBarrel.position.set(0, 0.01, -0.28);
-  smg.add(smgBarrel);
-  const smgMag = mesh(UNIT_BOX, materials.steel);
-  smgMag.scale.set(0.05, 0.2, 0.09);
-  smgMag.position.set(0, -0.13, 0.02);
-  smg.add(smgMag);
-  const smgGrip = mesh(UNIT_BOX, materials.crate);
-  smgGrip.scale.set(0.06, 0.16, 0.08);
-  smgGrip.position.set(0, -0.1, 0.16);
-  smg.add(smgGrip);
-  smg.position.set(0.27, -0.25, -0.56);
-  smg.scale.setScalar(0.8);
-  camera.add(smg);
-  views.push({ group: smg, baseX: 0.27, baseY: -0.25, baseZ: -0.56 });
-
-  const pistol = new THREE.Group();
-  const slide = mesh(UNIT_BOX, materials.steel);
-  slide.scale.set(0.07, 0.07, 0.26);
-  pistol.add(slide);
-  const grip = mesh(UNIT_BOX, materials.ink);
-  grip.scale.set(0.07, 0.17, 0.11);
-  grip.position.set(0, -0.11, 0.08);
-  grip.rotation.x = -0.18;
-  pistol.add(grip);
-  pistol.position.set(0.26, -0.22, -0.52);
-  pistol.scale.setScalar(0.85);
-  camera.add(pistol);
-  views.push({ group: pistol, baseX: 0.26, baseY: -0.22, baseZ: -0.52 });
-
-  for (const view of views) view.group.visible = false;
-  return views;
-}
-
-function buildTracers(scene, count) {
-  const positions = new Float32Array(count * 6);
-  const geometry = new THREE.BufferGeometry();
-  const attribute = new THREE.BufferAttribute(positions, 3);
-  attribute.setUsage(THREE.DynamicDrawUsage);
-  geometry.setAttribute('position', attribute);
-  const line = new THREE.LineSegments(
-    geometry,
-    new THREE.LineBasicMaterial({
-      color: new THREE.Color(PALETTE.accent),
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false,
-    }),
-  );
-  line.frustumCulled = false;
-  line.visible = false;
-  scene.add(line);
-  return { line, positions, attribute };
-}
-
 export function createWorld(container, state) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
@@ -255,8 +168,7 @@ export function createWorld(container, state) {
   buildMap(scene, materials);
   buildLights(scene);
   const botViews = state.bots.map((actor) => createBotView(actor, scene, materials));
-  const viewmodels = buildViewmodels(camera, materials);
-  const tracers = buildTracers(scene, state.tracers.length);
+  const viewmodels = createViewmodels(camera, scene, state);
 
   function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -278,9 +190,11 @@ export function createWorld(container, state) {
       lerp(player.prevPosition.y, player.position.y, alpha) + player.eye,
       lerp(player.prevPosition.z, player.position.z, alpha),
     );
+    const pitch = lerp(player.prevPitch, player.pitch, alpha) + player.recoilPitch;
+    const yaw = lerpAngle(player.prevYaw, player.yaw, alpha) + player.recoilYaw;
     camera.rotation.set(
-      lerp(player.prevPitch, player.pitch, alpha),
-      lerpAngle(player.prevYaw, player.yaw, alpha),
+      Math.max(-CONFIG.view.pitchLimit, Math.min(CONFIG.view.pitchLimit, pitch)),
+      yaw,
       0,
       'YXZ',
     );
@@ -301,55 +215,10 @@ export function createWorld(container, state) {
     }
   }
 
-  function updateViewmodels(state) {
-    const player = state.player;
-    const active = state.view.mode === 'player' && player.alive;
-    const speed = Math.hypot(player.velocity.x, player.velocity.z);
-    for (let index = 0; index < viewmodels.length; index += 1) {
-      const view = viewmodels[index];
-      const weapon = player.slots[index];
-      const visible = active && player.slot === index;
-      view.group.visible = visible;
-      if (!visible) continue;
-      const bob = Math.sin(state.time * 9.5) * Math.min(speed, 6) * 0.0018;
-      const sway = Math.cos(state.time * 4.7) * Math.min(speed, 6) * 0.0009;
-      const reload = weapon.reloadLeft > 0 ? Math.sin((1 - weapon.reloadLeft / weapon.reloadTime) * Math.PI) : 0;
-      view.group.position.set(view.baseX + sway, view.baseY + bob - reload * 0.08, view.baseZ);
-      view.group.rotation.set(-reload * 0.55, 0.02, 0);
-    }
-  }
-
-  function updateTracers(state) {
-    let any = false;
-    for (let index = 0; index < state.tracers.length; index += 1) {
-      const tracer = state.tracers[index];
-      const offset = index * 6;
-      if (!tracer.active) {
-        tracers.positions[offset] = 0;
-        tracers.positions[offset + 1] = -1000;
-        tracers.positions[offset + 2] = 0;
-        tracers.positions[offset + 3] = 0;
-        tracers.positions[offset + 4] = -1000;
-        tracers.positions[offset + 5] = 0;
-        continue;
-      }
-      any = true;
-      tracers.positions[offset] = tracer.x;
-      tracers.positions[offset + 1] = tracer.y;
-      tracers.positions[offset + 2] = tracer.z;
-      tracers.positions[offset + 3] = tracer.x + tracer.dx * tracer.length;
-      tracers.positions[offset + 4] = tracer.y + tracer.dy * tracer.length;
-      tracers.positions[offset + 5] = tracer.z + tracer.dz * tracer.length;
-    }
-    tracers.attribute.needsUpdate = true;
-    tracers.line.visible = any;
-  }
-
   function render(state, alpha) {
     updateCamera(state, alpha);
     updateBots(state, alpha);
-    updateViewmodels(state);
-    updateTracers(state);
+    viewmodels.update(state);
     renderer.render(scene, camera);
   }
 

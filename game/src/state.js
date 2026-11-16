@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { MAP } from './map.js';
 import { mulberry32, normalizeSeed } from './rng.js';
+import { WEAPONS } from './weapons.js';
 
 const VANGUARD_NAMES = ['Brass', 'Halyard', 'Juno', 'Flint'];
 const SYNDICATE_NAMES = ['Crow', 'Vesper', 'Moss', 'Dahl', 'Rook'];
@@ -20,12 +21,15 @@ function poseToward(px, py, pz, tx, ty, tz) {
 }
 
 function makeWeapons() {
-  return CONFIG.weapons.map((def) => ({
+  return WEAPONS.map((def) => ({
     ...def,
-    mag: def.magSize,
-    reserve: def.reserveMax,
+    mag: def.magazine,
+    reserve: def.reserve,
     reloadLeft: 0,
     fireCooldown: 0,
+    emptyClick: 0,
+    kick: 0,
+    muzzleFlash: 0,
   }));
 }
 
@@ -57,6 +61,8 @@ function createActor(id, name, team, isPlayer, spawn, role) {
     slots: makeWeapons(),
     slot: 0,
     spread: 0,
+    recoilPitch: 0,
+    recoilYaw: 0,
     lastAttackerId: null,
   };
 }
@@ -90,6 +96,23 @@ function createImpacts() {
     maxLife: 0,
     kind: 'wall',
   }));
+}
+
+function createKillFeed() {
+  return {
+    head: 0,
+    items: Array.from({ length: 6 }, () => ({
+      active: false,
+      killer: '',
+      victim: '',
+      killerTeam: null,
+      victimTeam: null,
+      weapon: '',
+      headshot: false,
+      ttl: 0,
+      maxTtl: 0,
+    })),
+  };
 }
 
 export function createGameState(seed = 1) {
@@ -172,9 +195,11 @@ export function createGameState(seed = 1) {
       buyOpen: false,
       hitMarker: 0,
       message: '',
+      messageTime: 0,
     },
     tracers: createTracers(),
     impacts: createImpacts(),
+    killFeed: createKillFeed(),
     events: [],
     stats: {
       shotsFired: 0,

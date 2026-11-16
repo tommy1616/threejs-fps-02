@@ -5,6 +5,8 @@ import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createFixedLoop } from './loop.js';
 import { applyLook, stepPlayer } from './player.js';
+import { stepWeapons } from './weapon.js';
+import { pushKillFeed, stepCombat } from './combat.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedShot = params.get('shot');
@@ -72,8 +74,26 @@ function setupPlayShot() {
   player.armor = 62;
   player.money = 2600;
   player.slot = 0;
+  player.spread = 0.006;
   player.slots[0].mag = 21;
   player.slots[0].reserve = 63;
+  player.slots[0].kick = 0.35;
+  state.ui.message = 'ROUND 5';
+  state.ui.messageTime = 999;
+  pushKillFeed(
+    state,
+    { name: 'Juno', team: 'vanguard' },
+    { name: 'Crow', team: 'syndicate' },
+    'Harrow AR',
+    true,
+  );
+  pushKillFeed(
+    state,
+    { name: 'Vesper', team: 'syndicate' },
+    { name: 'Halyard', team: 'vanguard' },
+    'Kestrel P9',
+    false,
+  );
 
   const vanguardSpots = [
     [-3.2, 7.4, 0.18],
@@ -216,9 +236,14 @@ function simulate(state, dt) {
     actor.prevPitch = actor.pitch;
   }
 
-  if (snapshot) stepPlayer(state, snapshot, dt);
+  if (snapshot) {
+    stepPlayer(state, snapshot, dt);
+    stepWeapons(state, snapshot, dt);
+  }
+  stepCombat(state, dt);
   if (state.phase === 'live') state.match.phaseTime = Math.max(0, state.match.phaseTime - dt);
   state.ui.hitMarker = Math.max(0, state.ui.hitMarker - dt);
+  state.ui.messageTime = Math.max(0, state.ui.messageTime - dt);
 }
 
 let firstFrame = true;

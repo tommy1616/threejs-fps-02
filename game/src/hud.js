@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { WEAPONS } from './weapons.js';
 
 function formatTime(seconds) {
   const value = Math.max(0, Math.ceil(seconds));
@@ -13,7 +13,10 @@ function setText(element, value) {
 
 export function createHud() {
   const hud = document.getElementById('hud');
+  const crosshair = document.getElementById('crosshair');
   const hitmarker = document.getElementById('hitmarker');
+  const centerMessage = document.getElementById('center-message');
+  const killfeed = document.getElementById('killfeed');
   const timer = document.getElementById('timer');
   const phaseLabel = document.getElementById('phase-label');
   const scoreV = document.getElementById('score-v');
@@ -43,11 +46,23 @@ export function createHud() {
   const overlayKeys = document.getElementById('overlay-keys');
 
   const slotCache = ['', '', ''];
+  const killRows = [];
+  const killCache = [];
+  let crosshairScale = 1;
   let deployHandler = () => {};
   play.addEventListener('click', () => deployHandler());
 
-  for (let index = 0; index < CONFIG.weapons.length; index += 1) {
-    const def = CONFIG.weapons[index];
+  for (let index = 0; index < 6; index += 1) {
+    const row = document.createElement('div');
+    row.className = 'kill-row';
+    row.hidden = true;
+    killfeed.appendChild(row);
+    killRows.push(row);
+    killCache.push('');
+  }
+
+  for (let index = 0; index < WEAPONS.length; index += 1) {
+    const def = WEAPONS[index];
     const item = document.createElement('li');
     item.innerHTML = `<kbd>${def.slot}</kbd><span>${def.name}</span><b>$${def.price}</b>`;
     buyList.appendChild(item);
@@ -118,6 +133,13 @@ export function createHud() {
     setText(ammoMag, String(weapon.mag));
     setText(ammoReserve, `/ ${weapon.reserve}`);
     setText(phaseLabel, state.phase === 'live' ? 'LIVE' : state.phase === 'buy' ? 'BUY PHASE' : state.phase === 'roundEnd' ? 'ROUND OVER' : 'BRIEFING');
+    setText(centerMessage, weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '');
+
+    const scale = Math.min(3.2, 1 + player.spread * 90);
+    if (Math.abs(scale - crosshairScale) > 0.03) {
+      crosshairScale = scale;
+      crosshair.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(2)})`;
+    }
 
     if (state.objective.planted) {
       setText(objective, `SURGE CHARGE ARMED · SITE ${state.objective.site ?? 'A'}`);
@@ -134,6 +156,25 @@ export function createHud() {
         slotCache[index] = label;
       }
       slotEls[index].classList.toggle('active', player.slot === index);
+    }
+
+    let rowsUsed = 0;
+    for (let index = 0; index < state.killFeed.items.length; index += 1) {
+      const entry = state.killFeed.items[index];
+      if (!entry.active || rowsUsed >= killRows.length) continue;
+      const text = `${entry.killer}  ${entry.weapon}${entry.headshot ? ' ◎' : ''}  ${entry.victim}`;
+      if (killCache[rowsUsed] !== text) {
+        killCache[rowsUsed] = text;
+        killRows[rowsUsed].textContent = text;
+      }
+      killRows[rowsUsed].hidden = false;
+      killRows[rowsUsed].className = `kill-row ${entry.killerTeam ?? ''}`;
+      rowsUsed += 1;
+    }
+    for (let index = rowsUsed; index < killRows.length; index += 1) {
+      if (killRows[index].hidden) continue;
+      killRows[index].hidden = true;
+      killCache[index] = '';
     }
 
     hitmarker.classList.toggle('on', state.ui.hitMarker > 0);

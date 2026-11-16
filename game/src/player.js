@@ -119,16 +119,6 @@ export function stepPlayer(state, input, dt) {
   if (!player.alive) return;
 
   const weapon = player.slots[player.slot];
-  weapon.fireCooldown = Math.max(0, weapon.fireCooldown - dt);
-  if (weapon.reloadLeft > 0) {
-    weapon.reloadLeft = Math.max(0, weapon.reloadLeft - dt);
-    if (weapon.reloadLeft === 0) {
-      const needed = weapon.magSize - weapon.mag;
-      const taken = Math.min(needed, weapon.reserve);
-      weapon.mag += taken;
-      weapon.reserve -= taken;
-    }
-  }
 
   if (input.slotPressed > 0) {
     const nextSlot = clamp(input.slotPressed - 1, 0, player.slots.length - 1);
@@ -138,14 +128,6 @@ export function stepPlayer(state, input, dt) {
       player.spread = 0;
     }
     input.slotPressed = 0;
-  }
-
-  if (input.reloadPressed) {
-    input.reloadPressed = false;
-    const active = player.slots[player.slot];
-    if (active.reloadLeft === 0 && active.mag < active.magSize && active.reserve > 0) {
-      active.reloadLeft = active.reloadTime;
-    }
   }
 
   if (input.crouch && !player.crouching) {
