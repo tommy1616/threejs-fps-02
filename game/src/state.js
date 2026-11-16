@@ -1,4 +1,3 @@
-// state.js — game state.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { MAP } from './map.js';
@@ -217,6 +216,8 @@ export function createGameState(seed = 1) {
 		},
 		tracers: createTracers(),
 		noises: createNoises(),
+		sounds: Array.from({ length: 32 }, () => ({ active: false, type: '', x: 0, y: 0, z: 0, cls: null })),
+		soundHead: 0,
 		killFeed: createKillFeed(),
 		grenades: Array.from({ length: CONFIG.pools.grenades }, () => ({
 			active: false,
@@ -247,6 +248,10 @@ export function createGameState(seed = 1) {
 			ttl: 0,
 			maxTtl: 0.35,
 		})),
+		decals: Array.from({ length: 48 }, () => ({ active: false, x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, ttl: 0 })),
+		sparks: Array.from({ length: 16 }, () => ({ active: false, x: 0, y: 0, z: 0, ttl: 0 })),
+		decalHead: 0,
+		sparkHead: 0,
 	};
 }
 

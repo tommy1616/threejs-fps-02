@@ -1,4 +1,3 @@
-// hud.js — DOM HUD.
 import { SHOP } from './weapons.js';
 
 function formatTime(seconds) {

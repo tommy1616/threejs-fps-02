@@ -1,4 +1,3 @@
-// config.js — tunables.
 const deepFreeze = (value) => {
 	if (value && typeof value === 'object' && !Object.isFrozen(value)) {
 		for (const key of Object.keys(value)) deepFreeze(value[key]);

@@ -1,4 +1,3 @@
-// map.js — map and collision.
 const EPSILON = 1e-5;
 
 const box = (minX, minY, minZ, maxX, maxY, maxZ, mat, kind = 'solid') =>
@@ -71,12 +70,7 @@ const PROPS = Object.freeze([
 	{ type: 'sign', x: 3.94, y: 1.8, z: 0, yaw: -Math.PI / 2, text: 'PUMP HOUSE → B', color: '#b85f3c' },
 	{ type: 'relay', x: -17, z: -9, color: 'vanguard' },
 	{ type: 'relay', x: 17, z: -9, color: 'syndicate' },
-	{ type: 'barrel', x: -24, z: 14 },
-	{ type: 'barrel', x: 24, z: 14 },
 	{ type: 'pipe', x: 0, z: -22.5, len: 20 },
-	{ type: 'pipe', x: 0, z: 22.5, len: 20 },
-	{ type: 'lamp', x: -16, z: -14 },
-	{ type: 'lamp', x: 16, z: -14 },
 	{ type: 'catwalk', x: -23, z: 4, len: 14 },
 ]);
 const wp = (id, x, z, links) => Object.freeze({ id, x, z, links: Object.freeze(links) });

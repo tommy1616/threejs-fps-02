@@ -1,4 +1,3 @@
-// input.js — input snapshot.
 export function createInput(canvas, onLockChange = () => {}) {
 	const keys = new Set();
 	const pending = {

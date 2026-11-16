@@ -1,4 +1,3 @@
-// palette.js — palette.
 export const PALETTE = {
 	sky: '#b7d0cd',
 	fog: '#ead8b6',

@@ -1,4 +1,3 @@
-// objective.js — relay objective.
 import { CONFIG } from './config.js';
 import { MAP } from './map.js';
 import { emitNoise } from './combat.js';

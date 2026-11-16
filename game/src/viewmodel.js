@@ -1,10 +1,23 @@
-// viewmodel.js — gun viewmodel.
 import * as THREE from 'three';
 import { PALETTE } from './palette.js';
 import { WEAPONS } from './weapons.js';
 
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
-const FLASH_GEO = new THREE.PlaneGeometry(0.14, 0.14);
+const FLASH_GEO = new THREE.PlaneGeometry(0.26, 0.26);
+const flashCanvas = document.createElement('canvas');
+flashCanvas.width = flashCanvas.height = 64;
+const flashCtx = flashCanvas.getContext('2d');
+const flashGradient = flashCtx.createRadialGradient(32, 32, 2, 32, 32, 30);
+flashGradient.addColorStop(0, 'rgba(255,244,210,1)');
+flashGradient.addColorStop(0.35, 'rgba(230,164,60,0.9)');
+flashGradient.addColorStop(1, 'rgba(230,164,60,0)');
+flashCtx.fillStyle = flashGradient;
+flashCtx.fillRect(0, 0, 64, 64);
+flashCtx.fillStyle = 'rgba(255,248,225,0.9)';
+flashCtx.fillRect(29, 4, 6, 56);
+flashCtx.fillRect(4, 29, 56, 6);
+const FLASH_TEX = new THREE.CanvasTexture(flashCanvas);
+FLASH_TEX.colorSpace = THREE.SRGBColorSpace;
 
 function mat(color, roughness, metalness) {
 	return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness, metalness });
@@ -33,9 +46,10 @@ function addFlash(group, x, y, z) {
 	const flash = new THREE.Mesh(
 		FLASH_GEO,
 		new THREE.MeshBasicMaterial({
-			color: new THREE.Color(PALETTE.accent),
+			map: FLASH_TEX,
+			color: new THREE.Color(PALETTE.white),
 			transparent: true,
-			opacity: 0.9,
+			opacity: 0.95,
 			depthWrite: false,
 			side: THREE.DoubleSide,
 			blending: THREE.AdditiveBlending,
@@ -158,7 +172,7 @@ export function createViewmodels(camera, scene, state) {
 			view.flash.flash.visible = flashing;
 			view.flash.light.intensity = flashing ? 5 : 0;
 			if (flashing) {
-				view.flash.flash.rotation.z = state.time * 24;
+				view.flash.flash.rotation.z = (state.tick * 0.37 + index) % Math.PI;
 				view.flash.flash.scale.setScalar(0.85 + weapon.muzzleFlash / weapon.flashTime * 0.35);
 			}
 		}

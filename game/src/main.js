@@ -1,4 +1,3 @@
-// main.js — boot and wiring.
 import { createGameState, readonlyView } from './state.js';
 import { createWorld } from './world.js';
 import { createInput } from './input.js';
@@ -9,6 +8,7 @@ import { restartMatch, startMatch } from './rounds.js';
 import { buyItem, canBuy } from './economy.js';
 import { SHOP } from './weapons.js';
 import { advance } from './simulation.js';
+import { createAudio } from './audio.js';
 
 const params = new URLSearchParams(window.location.search);
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
@@ -22,6 +22,7 @@ let snapshot = null;
 
 const world = createWorld(document.getElementById('game'), state);
 const input = dev ? null : createInput(world.domElement, onLockChange);
+const audio = dev ? null : createAudio();
 
 if (dev) {
 	window.__stage = {
@@ -72,6 +73,7 @@ function onLockChange(locked) {
 
 hud.onDeploy(() => {
 	if (dev || !input) return;
+	audio.init();
 	if (state.phase === 'matchOver') restartMatch(state);
 	input.requestLock();
 });
@@ -122,6 +124,7 @@ let firstFrame = true;
 function render(alpha) {
 	world.render(state, alpha);
 	hud.sync(state);
+	audio?.update(state);
 	if (firstFrame) {
 		firstFrame = false;
 		document.body.dataset.ready = '1';

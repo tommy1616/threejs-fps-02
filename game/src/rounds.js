@@ -1,9 +1,9 @@
-// rounds.js — round flow.
 import { CONFIG } from './config.js';
 import { resetBots } from './bots.js';
 import { setupCharge } from './objective.js';
 import { createWeapon, DEFAULT_WEAPON } from './weapons.js';
 import { addMoney, botBuy, ECONOMY } from './economy.js';
+import { emitSound } from './audio.js';
 
 const MOVE = CONFIG.movement;
 const ROUND = CONFIG.round;
@@ -94,7 +94,7 @@ export function startRound(state) {
 	}
 	state.phase = 'freeze';
 	state.match.phaseTime = ROUND.freezeSeconds;
-	state.match.setupTime = 37;
+	state.match.setupTime = 26 + (state.match.round % 2) * 10 + Math.floor(state.rng() * 4);
 	state.match.winner = null;
 	state.match.reason = '';
 	state.ui.overlay = 'none';
@@ -107,6 +107,7 @@ export function startRound(state) {
 	setupCharge(state);
 	resetBots(state);
 	botBuy(state);
+	emitSound(state, 'roundStart', state.player.position.x, 1, state.player.position.z);
 }
 
 export function startMatch(state) {
@@ -153,6 +154,7 @@ export function endRound(state, winner, reason, objectiveWin = false) {
 	state.player.scoped = false;
 	state.ui.overlay = 'roundEnd';
 	state.ui.hudVisible = true;
+	emitSound(state, 'roundEnd', state.player.position.x, 1, state.player.position.z);
 	awardMoney(state, winner, objectiveWin);
 	if (state.objective.wasPlanted) {
 		for (let index = 0; index < state.actors.length; index += 1) {

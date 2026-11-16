@@ -27,6 +27,8 @@ try {
 		console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, first contact ${round.contact}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
 	}
 	const average = rounds.reduce((sum, round) => sum + round.liveTime, 0) / (rounds.length || 1);
+	const contacts = rounds.map((round) => round.contact).filter((value) => Number.isFinite(value));
+	const contactSpread = contacts.length ? Math.max(...contacts) - Math.min(...contacts) : 0;
 	const reasons = { elimination: 0, detonation: 0, defuse: 0, time: 0 };
 	const winners = {};
 	for (const round of rounds) {
@@ -36,11 +38,12 @@ try {
 		else reasons.elimination += 1;
 		winners[round.winner] = (winners[round.winner] || 0) + 1;
 	}
-	console.log(`average live=${average.toFixed(1)}s reasons=${JSON.stringify(reasons)} winners=${JSON.stringify(winners)}`);
+	console.log(`average live=${average.toFixed(1)}s contactSpread=${contactSpread.toFixed(1)}s reasons=${JSON.stringify(reasons)} winners=${JSON.stringify(winners)}`);
 	console.log(`sanity=${JSON.stringify(sanity)}`);
 	console.log(`moved=${summary.moved} autoNext=${summary.autoNext} respawnFull=${summary.respawnFull}`);
 	if (rounds.length < 6) { console.error('FAIL: fewer than 6 rounds'); failed = true; }
 	if (average < 50 || average > 110) { console.error('FAIL: average outside 50-110s'); failed = true; }
+	if (contactSpread < 8) { console.error('FAIL: first contact spread under 8s'); failed = true; }
 	if (!rounds.some((round) => round.planted)) { console.error('FAIL: no plant'); failed = true; }
 	if (Object.keys(winners).length < 2) { console.error('FAIL: both teams did not win'); failed = true; }
 	if (Object.values(reasons).filter((count) => count > 0).length < 2) { console.error('FAIL: reasons did not vary'); failed = true; }

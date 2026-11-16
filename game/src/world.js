@@ -1,4 +1,3 @@
-// world.js — scene and render.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { PALETTE } from './palette.js';
@@ -236,6 +235,43 @@ function createNadeView(scene, state) {
 	};
 }
 
+function impactPoints(scene, count, size, color) {
+	const positions = new Float32Array(count * 3).fill(-1000);
+	const geometry = new THREE.BufferGeometry();
+	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+	const points = new THREE.Points(geometry, new THREE.PointsMaterial({
+		color, size, transparent: true, opacity: 0.75, depthWrite: false,
+	}));
+	points.frustumCulled = false;
+	scene.add(points);
+	return { positions, update: () => { geometry.attributes.position.needsUpdate = true; } };
+}
+
+function createImpactView(scene, state) {
+	const decals = impactPoints(scene, state.decals.length, 0.16, PALETTE.ink);
+	const sparks = impactPoints(scene, state.sparks.length, 0.07, PALETTE.accent);
+	return {
+		update(state) {
+			for (let index = 0; index < state.decals.length; index += 1) {
+				const item = state.decals[index];
+				const offset = index * 3;
+				decals.positions[offset] = item.active ? item.x : 0;
+				decals.positions[offset + 1] = item.active ? item.y : -1000;
+				decals.positions[offset + 2] = item.active ? item.z : 0;
+			}
+			for (let index = 0; index < state.sparks.length; index += 1) {
+				const item = state.sparks[index];
+				const offset = index * 3;
+				sparks.positions[offset] = item.active ? item.x : 0;
+				sparks.positions[offset + 1] = item.active ? item.y : -1000;
+				sparks.positions[offset + 2] = item.active ? item.z : 0;
+			}
+			decals.update();
+			sparks.update();
+		},
+	};
+}
+
 export function createWorld(container, state) {
 	const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
@@ -267,6 +303,7 @@ export function createWorld(container, state) {
 	createProps(scene, materials, textures, MAP.props);
 	const objectiveView = createObjectiveView(scene, materials);
 	const nadeView = createNadeView(scene, state);
+	const impactView = createImpactView(scene, state);
 	const botRenders = createBotRenders(scene, state);
 	const viewmodels = createViewmodels(camera, scene, state);
 
@@ -319,6 +356,7 @@ export function createWorld(container, state) {
 		updateCamera(state, alpha);
 		objectiveView.update(state);
 		nadeView.update(state);
+		impactView.update(state);
 		botRenders.update(state, alpha);
 		viewmodels.update(state);
 		renderer.render(scene, camera);

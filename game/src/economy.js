@@ -1,4 +1,3 @@
-// economy.js — economy and shop.
 import { CONFIG } from './config.js';
 import { SHOP, WEAPONS, createWeapon } from './weapons.js';
 

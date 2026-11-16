@@ -1,4 +1,3 @@
-// rng.js — seeded PRNG.
 export function mulberry32(seed) {
 	let a = seed >>> 0;
 	return function random() {

@@ -1,6 +1,6 @@
-// combat.js — damage and kills.
 import { dropCharge } from './objective.js';
 import { addMoney } from './economy.js';
+import { emitSound } from './audio.js';
 
 const FEED_SECONDS = 6;
 
@@ -44,6 +44,7 @@ export function applyDamage(state, victim, amount, attacker, weapon, part) {
 	victim.deaths += 1;
 	victim.velocity.set(0, 0, 0);
 	dropCharge(state, victim);
+	emitSound(state, 'kill', victim.position.x, victim.position.y + 1, victim.position.z);
 	if (attacker && attacker !== victim) {
 		attacker.kills += 1;
 		addMoney(attacker, weapon ? weapon.reward : 300);
@@ -66,5 +67,17 @@ export function stepCombat(state, dt) {
 		if (!noise.active) continue;
 		noise.ttl -= dt;
 		if (noise.ttl <= 0) noise.active = false;
+	}
+	for (let index = 0; index < state.decals.length; index += 1) {
+		const decal = state.decals[index];
+		if (!decal.active) continue;
+		decal.ttl -= dt;
+		if (decal.ttl <= 0) decal.active = false;
+	}
+	for (let index = 0; index < state.sparks.length; index += 1) {
+		const spark = state.sparks[index];
+		if (!spark.active) continue;
+		spark.ttl -= dt;
+		if (spark.ttl <= 0) spark.active = false;
 	}
 }

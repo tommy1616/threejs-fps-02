@@ -1,4 +1,3 @@
-// loop.js — fixed-step loop.
 import { CONFIG } from './config.js';
 
 export function createFixedLoop({ state, simulate, render, beginFrame = null }) {

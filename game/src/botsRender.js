@@ -1,4 +1,3 @@
-// botsRender.js — bot meshes.
 import * as THREE from 'three';
 import { PALETTE } from './palette.js';
 

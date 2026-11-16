@@ -1,4 +1,3 @@
-// simulation.js — fixed-step advance.
 import { stepPlayer } from './player.js';
 import { stepWeapons } from './weapon.js';
 import { stepBots } from './bots.js';

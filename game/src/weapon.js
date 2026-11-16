@@ -1,8 +1,8 @@
-// weapon.js — weapon simulation.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { createRayHit, raycastSolids } from './map.js';
 import { applyDamage, emitNoise } from './combat.js';
+import { emitSound } from './audio.js';
 import { throwGrenade } from './grenades.js';
 
 const MOVE = CONFIG.movement;
@@ -127,6 +127,15 @@ function addTracer(state, sx, sy, sz, dx, dy, dz, length, team) {
 	}
 }
 
+function impact(state, x, y, z, nx, ny, nz) {
+	const decal = state.decals.find((item) => !item.active) || state.decals[state.decalHead++ % state.decals.length];
+	Object.assign(decal, { active: true, x, y, z, nx, ny, nz, ttl: 18 });
+	for (let index = 0; index < 2; index += 1) {
+		const spark = state.sparks.find((item) => !item.active) || state.sparks[state.sparkHead++ % state.sparks.length];
+		Object.assign(spark, { active: true, x: x + index * 0.05, y: y + index * 0.03, z, ttl: 0.22 });
+	}
+}
+
 function spreadTarget(actor, weapon) {
 	const speed = Math.hypot(actor.velocity.x, actor.velocity.z);
 	let multiplier = 1 + weapon.moveMultiplier * Math.min(1, speed / MOVE.walkSpeed);
@@ -167,6 +176,7 @@ export function fireHitscan(state, actor, weapon) {
 	actor.recoilPitch += pattern[step][0];
 	actor.recoilYaw += pattern[step][1];
 	emitNoise(state, actor.position.x, actor.position.z, actor.team, actor.id);
+	emitSound(state, 'shot', actor.position.x, actor.position.y + actor.eye, actor.position.z, weapon.kind);
 
 	computeAim(state, actor);
 	const eyeY = actor.position.y + actor.eye;
@@ -193,6 +203,7 @@ export function fireHitscan(state, actor, weapon) {
 		if (actor.isPlayer) {
 			state.ui.hitMarker = 0.09;
 			state.ui.hitHead = hit.part === 'head';
+			emitSound(state, hit.part === 'head' ? 'head' : 'hit', hit.x, hit.y, hit.z);
 		}
 		endX = hit.x;
 		endY = hit.y;
@@ -201,6 +212,8 @@ export function fireHitscan(state, actor, weapon) {
 		endX = mapHit.x;
 		endY = mapHit.y;
 		endZ = mapHit.z;
+		impact(state, mapHit.x, mapHit.y, mapHit.z, mapHit.normalX, mapHit.normalY, mapHit.normalZ);
+		emitSound(state, 'hit', mapHit.x, mapHit.y, mapHit.z);
 	}
 
 	const startX = actor.position.x + right.x * 0.14 + dir.x * 0.4;
@@ -219,6 +232,7 @@ export function startReload(state, actor, silent = false) {
 		state.ui.message = 'RELOADING';
 		state.ui.messageTime = weapon.reloadTime;
 	}
+	emitSound(state, 'reload', actor.position.x, actor.position.y + actor.eye, actor.position.z);
 	return true;
 }
 
@@ -284,6 +298,7 @@ export function stepWeapons(state, input, dt) {
 				weapon.fireCooldown = 0.25;
 				state.ui.message = 'EMPTY MAG';
 				state.ui.messageTime = 0.9;
+				emitSound(state, 'empty', player.position.x, player.position.y + player.eye, player.position.z);
 			}
 		} else if (weapon.fireCooldown <= 0) {
 			fireHitscan(state, player, weapon);

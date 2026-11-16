@@ -34,9 +34,13 @@ export async function openPage(url, port = 9223) {
 	});
 	let nextId = 0;
 	const pending = new Map();
+	const events = [];
 	ws.addEventListener('message', (event) => {
 		const message = JSON.parse(event.data);
-		if (!message.id) return;
+		if (!message.id) {
+			if (message.method === 'Runtime.exceptionThrown' || message.method === 'Runtime.consoleAPICalled') events.push(message);
+			return;
+		}
 		const job = pending.get(message.id);
 		if (!job) return;
 		pending.delete(message.id);
@@ -83,6 +87,7 @@ export async function openPage(url, port = 9223) {
 	return {
 		send,
 		evaluate,
+		events,
 		async screenshot() {
 			const shot = await send('Page.captureScreenshot', { format: 'png' });
 			return Buffer.from(shot.data, 'base64');

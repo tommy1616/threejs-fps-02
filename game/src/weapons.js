@@ -1,4 +1,3 @@
-// weapons.js — weapon data.
 export const WEAPONS = Object.freeze([
 	{
 		id: 'kestrel', name: 'Kestrel P9', slot: 2, kind: 'pistol', category: 'SIDEARM',

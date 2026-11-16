@@ -1,7 +1,7 @@
-// player.js — player controller.
 import { CONFIG } from './config.js';
 import { MAP, overlapsAt } from './map.js';
 import { emitNoise } from './combat.js';
+import { emitSound } from './audio.js';
 
 const EPSILON = 1e-4;
 const MOVE = CONFIG.movement;
@@ -200,6 +200,7 @@ export function stepPlayer(state, input, dt) {
 		if (player.stepTimer <= 0) {
 			player.stepTimer = 0.42;
 			emitNoise(state, player.position.x, player.position.z, player.team, player.id, 1.4, 9);
+			emitSound(state, 'step', player.position.x, player.position.y + 0.1, player.position.z);
 		}
 	} else {
 		player.stepTimer = 0;

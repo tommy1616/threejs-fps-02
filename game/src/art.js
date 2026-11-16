@@ -1,10 +1,8 @@
-// art.js — procedural textures, sky and map props.
 import * as THREE from 'three';
 import { PALETTE } from './palette.js';
 import { mulberry32 } from './rng.js';
 
 const UNIT = new THREE.BoxGeometry(1, 1, 1);
-const BARREL = new THREE.CylinderGeometry(0.3, 0.34, 0.9, 10);
 const PIPE = new THREE.CylinderGeometry(0.11, 0.11, 1, 8);
 
 function texture(size, repeat, draw) {
@@ -76,7 +74,7 @@ export function createTextures(seed) {
 		ctx.fillStyle = color;
 		ctx.fillRect(0, 0, 512, 160);
 		ctx.fillStyle = PALETTE.ink;
-		ctx.font = 'bold 72px system-ui, sans-serif';
+		ctx.font = 'bold 56px system-ui, sans-serif';
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 		ctx.fillText(text, 256, 84);
@@ -117,18 +115,10 @@ export function createProps(scene, materials, textures, props) {
 			scene.add(mesh(materials[prop.color], 0.9, 0.8, 0.55, prop.x, 0.4, prop.z));
 			scene.add(mesh(materials.steel, 0.08, 1.5, 0.08, prop.x, 1.2, prop.z));
 			scene.add(mesh(materials[prop.color], 0.75, 0.08, 0.58, prop.x, 0.82, prop.z));
-		} else if (prop.type === 'barrel') {
-			scene.add(mesh(materials.rust, 1, 1, 1, prop.x, 0.45, prop.z, BARREL));
 		} else if (prop.type === 'pipe') {
 			const pipe = mesh(materials.rust, 1, prop.len, 1, prop.x, 2.7, prop.z, PIPE);
 			pipe.rotation.z = Math.PI * 0.5;
 			scene.add(pipe);
-		} else if (prop.type === 'lamp') {
-			scene.add(mesh(materials.steel, 0.16, 3.8, 0.16, prop.x, 1.9, prop.z));
-			scene.add(mesh(materials.accent, 0.5, 0.18, 0.5, prop.x, 3.85, prop.z));
-		} else if (prop.type === 'catwalk') {
-			scene.add(mesh(materials.steel, 1.6, 0.16, prop.len, prop.x, 2.8, prop.z));
-			scene.add(mesh(materials.rust, 0.08, 0.7, prop.len, prop.x + 0.76, 3.2, prop.z));
 		} else if (prop.type === 'sign') {
 			const panel = new THREE.Mesh(
 				new THREE.PlaneGeometry(2.6, 0.82),

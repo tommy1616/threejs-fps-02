@@ -1,10 +1,10 @@
-// bots.js — bot AI.
 import { CONFIG } from './config.js';
 import { MAP, createRayHit, raycastSolids } from './map.js';
 import { moveActor } from './player.js';
 import { fireHitscan, startReload } from './weapon.js';
 import { smokeBlocks, throwGrenade } from './grenades.js';
 import { emitNoise } from './combat.js';
+import { emitSound } from './audio.js';
 
 const NODES = new Map(MAP.waypoints.map((node) => [node.id, node]));
 const sight = createRayHit();
@@ -206,8 +206,7 @@ export function resetBots(state) {
 		ai.marksman = !marks[bot.team];
 		marks[bot.team] = true;
 		ai.prober = bot.team === 'syndicate' && defenderIndex <= 2;
-		ai.nadeTimer = 3 + state.rng() * 6;
-		ai.smoked = false;
+
 		ai.holdBase = 4 + state.rng() * 2;
 		bot.slot = bot.slots[0] ? 0 : 1;
 	}
@@ -354,29 +353,11 @@ export function stepBots(state, dt) {
 			}
 		}
 
-		ai.nadeTimer -= dt;
-		if (ai.nadeTimer <= 0) {
-			ai.nadeTimer = 6 + state.rng() * 8;
-			if (bot.grenades.frag > 0 && ai.state === 'engage') {
-				const dx = ai.lastSeenX - bot.position.x;
-				const dz = ai.lastSeenZ - bot.position.z;
-				if (Math.hypot(dx, dz) > 5) {
-					bot.yaw = Math.atan2(-dx, -dz);
-					bot.pitch = 0.22;
-					throwGrenade(state, bot, 'frag', true);
-				}
-			} else if (bot.grenades.smoke > 0 && bot.team === 'vanguard' && !ai.smoked
-				&& state.objective.state === 'carried' && state.objective.carrierId === bot.id) {
-				const site = MAP.sites[state.objective.attackSite || 'A'];
-				const dx = site.plantX - bot.position.x;
-				const dz = site.plantZ - bot.position.z;
-				bot.yaw = Math.atan2(-dx, -dz);
-				bot.pitch = 0.2;
-				if (throwGrenade(state, bot, 'smoke', true)) ai.smoked = true;
-			}
-		}
-
 		const carrying = state.objective.state === 'carried' && state.objective.carrierId === bot.id;
+		if (carrying && bot.grenades.smoke > 0) {
+			const site = MAP.sites[state.objective.attackSite || 'A'];
+			if (Math.hypot(site.plantX - bot.position.x, site.plantZ - bot.position.z) < 14) throwGrenade(state, bot, 'smoke', true);
+		}
 		ai.think -= dt;
 		if (ai.think <= 0 && state.match.setupTime <= 0) {
 			ai.think = 0.1 + state.rng() * 0.06;
@@ -390,6 +371,9 @@ export function stepBots(state, dt) {
 				ai.state = carrying ? 'patrol' : 'engage';
 				ai.lastSeenX = seen.position.x;
 				ai.lastSeenZ = seen.position.z;
+				if (bot.grenades.frag > 0 && Math.hypot(seen.position.x - bot.position.x, seen.position.z - bot.position.z) > 5) {
+					throwGrenade(state, bot, 'frag', true);
+				}
 			} else if (ai.state !== 'search') {
 				if (ai.state === 'engage') {
 					ai.state = 'search';
@@ -502,6 +486,7 @@ export function stepBots(state, dt) {
 			if (bot.stepTimer <= 0) {
 				bot.stepTimer = 0.42;
 				emitNoise(state, bot.position.x, bot.position.z, bot.team, bot.id, 1.4, 9);
+				emitSound(state, 'step', bot.position.x, bot.position.y + 0.1, bot.position.z);
 			}
 		} else {
 			bot.stepTimer = 0;

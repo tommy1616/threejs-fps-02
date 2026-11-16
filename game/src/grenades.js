@@ -1,7 +1,7 @@
-// grenades.js — grenades and smoke.
 import { CONFIG } from './config.js';
 import { createRayHit, overlapBoxes, raycastSolids } from './map.js';
 import { applyDamage, emitNoise } from './combat.js';
+import { emitSound } from './audio.js';
 
 const RADIUS = 0.1;
 const FRAG = { name: 'Frag Charge', reward: 300 };
@@ -75,6 +75,7 @@ function explodeFrag(state, grenade) {
 	const owner = actorById(state, grenade.ownerId);
 	blast(state, grenade.x, grenade.y, grenade.z, 0.35);
 	emitNoise(state, grenade.x, grenade.z, grenade.team, grenade.ownerId, 4);
+	emitSound(state, 'explosion', grenade.x, grenade.y, grenade.z);
 	for (let index = 0; index < state.actors.length; index += 1) {
 		const target = state.actors[index];
 		if (!target.alive || target.team === grenade.team) continue;
