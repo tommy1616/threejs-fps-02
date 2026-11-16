@@ -98,6 +98,86 @@ function buildLights(scene) {
   scene.add(bGlow);
 }
 
+function createObjectiveView(scene, materials) {
+  for (const id of ['A', 'B']) {
+    const site = MAP.sites[id];
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = PALETTE.accent;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(128, 128, 104, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = 'bold 150px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = PALETTE.white;
+    ctx.strokeText(id, 128, 136);
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillText(id, 128, 136);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const marker = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.4, 5.4),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+    );
+    marker.rotation.x = -Math.PI * 0.5;
+    marker.position.set(site.plantX, 0.015, site.plantZ + 2.5);
+    scene.add(marker);
+  }
+
+  const group = new THREE.Group();
+  const body = mesh(UNIT_BOX, materials.rust);
+  body.scale.set(0.34, 0.22, 0.5);
+  body.position.y = 0.11;
+  group.add(body);
+  const panel = mesh(UNIT_BOX, materials.accent);
+  panel.scale.set(0.22, 0.06, 0.3);
+  panel.position.y = 0.24;
+  group.add(panel);
+  const light = new THREE.PointLight(new THREE.Color(PALETTE.accent), 0, 4, 2);
+  light.position.y = 0.3;
+  group.add(light);
+  group.visible = false;
+  scene.add(group);
+
+  function update(state) {
+    const objective = state.objective;
+    const visible = objective.state === 'carried' || objective.state === 'ground' || objective.state === 'planted';
+    group.visible = visible;
+    if (!visible) return;
+    let x = objective.x;
+    let y = 0.12;
+    let z = objective.z;
+    let yaw = 0;
+    if (objective.state === 'carried') {
+      let carrier = null;
+      for (let index = 0; index < state.actors.length; index += 1) {
+        if (state.actors[index].id === objective.carrierId) { carrier = state.actors[index]; break; }
+      }
+      if (!carrier) return;
+      if (carrier.isPlayer) {
+        group.visible = false;
+        return;
+      }
+      x = carrier.position.x + Math.sin(carrier.yaw) * 0.24;
+      y = carrier.position.y + 1.12;
+      z = carrier.position.z + Math.cos(carrier.yaw) * 0.24;
+      yaw = carrier.yaw;
+    } else if (objective.state === 'planted') {
+      y = 0.16;
+    }
+    group.position.set(x, y, z);
+    group.rotation.y = yaw;
+    light.intensity = objective.planted ? (Math.sin(state.time * 8) > 0 ? 2.6 : 0.15) : 0.5;
+  }
+
+  return { update };
+}
+
 export function createWorld(container, state) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
@@ -119,6 +199,7 @@ export function createWorld(container, state) {
   const materials = createMaterials();
   buildMap(scene, materials);
   buildLights(scene);
+  const objectiveView = createObjectiveView(scene, materials);
   const botRenders = createBotRenders(scene, state);
   const viewmodels = createViewmodels(camera, scene, state);
 
@@ -154,6 +235,7 @@ export function createWorld(container, state) {
 
   function render(state, alpha) {
     updateCamera(state, alpha);
+    objectiveView.update(state);
     botRenders.update(state, alpha);
     viewmodels.update(state);
     renderer.render(scene, camera);

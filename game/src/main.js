@@ -9,10 +9,11 @@ import { stepWeapons } from './weapon.js';
 import { pushKillFeed, stepCombat } from './combat.js';
 import { stepBots } from './bots.js';
 import { restartMatch, startMatch, stepRounds } from './rounds.js';
+import { stepObjective } from './objective.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedShot = params.get('shot');
-const shot = requestedShot === 'start' || requestedShot === 'play' || requestedShot === 'end' ? requestedShot : null;
+const shot = ['start', 'play', 'end', 'plant', 'defuse'].includes(requestedShot) ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const testMode = params.get('test') === '1';
 
@@ -138,6 +139,7 @@ function advanceWorld(state, dt) {
   }
   if (state.phase === 'live') stepBots(state, dt);
   stepCombat(state, dt);
+  stepObjective(state, null, dt);
   stepRounds(state, dt);
   state.ui.hitMarker = Math.max(0, state.ui.hitMarker - dt);
   state.ui.messageTime = Math.max(0, state.ui.messageTime - dt);
@@ -166,7 +168,81 @@ function setupEndShot() {
   player.prevPitch = -0.04;
 }
 
+function placeTeam(state, team, spots) {
+  const actors = state.actors.filter((actor) => actor.team === team && !actor.isPlayer);
+  for (let index = 0; index < actors.length && index < spots.length; index += 1) {
+    const spot = spots[index];
+    placeActor(actors[index], spot[0], spot[1], spot[2]);
+  }
+}
+
+function setupPlantShot() {
+  state.phase = 'live';
+  state.view.mode = 'player';
+  state.ui.hudVisible = true;
+  state.ui.overlay = 'none';
+  state.ui.message = '';
+  state.ui.messageTime = 0;
+  state.match.round = 3;
+  state.match.phaseTime = 74;
+  state.match.score.vanguard = 1;
+  state.match.score.syndicate = 1;
+
+  const player = state.player;
+  placeActor(player, -15, -12.2, 2.58, -0.14);
+  player.team = 'vanguard';
+  player.health = 92;
+  player.armor = 35;
+  player.money = 2100;
+  player.slots[0].mag = 18;
+  player.slots[0].reserve = 60;
+
+  Object.assign(state.objective, {
+    state: 'carried', site: 'A', attackSite: 'A', carrierId: player.id,
+    planted: false, timer: 0, plantProgress: 0.6, defuseProgress: 0,
+    hint: 'Hold E to plant', result: null, x: player.position.x, z: player.position.z,
+  });
+
+  placeTeam(state, 'vanguard', [[-18.5, -6, 1.2], [-13, -10.5, 0.6], [-19.5, -11.5, 1.4], [-12, -6, 0.9]]);
+  placeTeam(state, 'syndicate', [[-20.5, -9, -1.6], [-14, -5, -2.2], [-13, -13, -2.8], [-20, -14, -1.4], [-11, -9, -2.1]]);
+}
+
+function setupDefuseShot() {
+  state.phase = 'live';
+  state.view.mode = 'player';
+  state.ui.hudVisible = true;
+  state.ui.overlay = 'none';
+  state.ui.message = '';
+  state.ui.messageTime = 0;
+  state.match.round = 9;
+  state.match.phaseTime = 74;
+  state.match.score.vanguard = 4;
+  state.match.score.syndicate = 4;
+
+  const player = state.player;
+  player.team = 'syndicate';
+  placeActor(player, -14.9, -9.4, 2.0, -0.4);
+  player.health = 76;
+  player.armor = 40;
+  player.money = 3900;
+  player.slots[0].mag = 14;
+  player.slots[0].reserve = 45;
+
+  Object.assign(state.objective, {
+    state: 'planted', site: 'A', attackSite: 'A', carrierId: null,
+    planted: true, timer: 31, plantProgress: 1, defuseProgress: 0.55,
+    defuserId: player.id, hint: 'Defusing relay charge', result: null,
+    x: -16.2, z: -8.8,
+  });
+
+  placeTeam(state, 'syndicate', [[-19, -6, 1.9], [-13.5, -11.5, 0.7], [-20.5, -12, 1.4], [-12, -6.5, 1.0]]);
+  placeTeam(state, 'vanguard', [[-20, -4.5, -2.2], [-12, -8.5, -1.6], [-18, -13.5, -2.6], [-11, -13, -1.9], [-16, -3.5, -3.0]]);
+}
+
 function setupTest() {
+  state.testMode = true;
+  state.player.isPlayer = false;
+  state.bots.push(state.player);
   startMatch(state);
   const rounds = [];
   let elapsed = 0;
@@ -175,12 +251,19 @@ function setupTest() {
   let autoNext = false;
   let respawnFull = true;
   let deathsMark = 0;
+  let planted = false;
+  let plantSite = null;
 
-  while (rounds.length < 3 && elapsed < 600) {
+  while (rounds.length < 4 && elapsed < 900) {
     const previousPhase = state.phase;
     if (state.phase === 'live') liveElapsed += CONFIG.fixedDt;
     advanceWorld(state, CONFIG.fixedDt);
     elapsed += CONFIG.fixedDt;
+
+    if (state.objective.state === 'planted' || state.objective.state === 'defused' || state.objective.state === 'detonated') {
+      planted = true;
+      plantSite = state.objective.site ?? plantSite;
+    }
 
     for (let index = 0; index < state.bots.length; index += 1) {
       const bot = state.bots[index];
@@ -193,6 +276,8 @@ function setupTest() {
         const actor = state.actors[index];
         if (!actor.alive || actor.health !== 100) respawnFull = false;
       }
+      planted = false;
+      plantSite = null;
     }
 
     if (state.phase === 'roundEnd' && previousPhase !== 'roundEnd') {
@@ -213,6 +298,8 @@ function setupTest() {
         liveTime: Number(liveElapsed.toFixed(1)),
         kills: totalDeaths - deathsMark,
         alive: `${vanguardAlive}-${syndicateAlive}`,
+        planted,
+        site: plantSite,
       });
       deathsMark = totalDeaths;
       liveElapsed = 0;
@@ -223,7 +310,7 @@ function setupTest() {
     seed: state.seed,
     rounds,
     moved,
-    autoNext: autoNext && rounds.length >= 3,
+    autoNext: autoNext && rounds.length >= 4,
     respawnFull,
     phase: state.phase,
     bots: state.bots.length,
@@ -246,6 +333,8 @@ function setupStartShot() {
 if (shot === 'play') setupPlayShot();
 else if (shot === 'end') setupEndShot();
 else if (shot === 'start') setupStartShot();
+else if (shot === 'plant') setupPlantShot();
+else if (shot === 'defuse') setupDefuseShot();
 if (testMode) setupTest();
 
 const world = createWorld(document.getElementById('game'), state);
@@ -322,6 +411,7 @@ function simulate(state, dt) {
     stepBots(state, dt);
   }
   stepCombat(state, dt);
+  stepObjective(state, snapshot, dt);
   stepRounds(state, dt);
   state.ui.hitMarker = Math.max(0, state.ui.hitMarker - dt);
   state.ui.messageTime = Math.max(0, state.ui.messageTime - dt);

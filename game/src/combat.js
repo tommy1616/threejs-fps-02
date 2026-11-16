@@ -1,4 +1,5 @@
 import { CONFIG } from './config.js';
+import { dropCharge } from './objective.js';
 
 const FEED_SECONDS = 6;
 
@@ -34,6 +35,7 @@ export function applyDamage(state, victim, amount, attacker, weaponName, part) {
   victim.alive = false;
   victim.deaths += 1;
   victim.velocity.set(0, 0, 0);
+  dropCharge(state, victim);
   if (attacker && attacker !== victim) {
     attacker.kills += 1;
     attacker.money = Math.min(CONFIG.economy.maxMoney, attacker.money + CONFIG.economy.killReward);

@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js';
 import { resetBots } from './bots.js';
+import { setupCharge } from './objective.js';
 
 const MOVE = CONFIG.movement;
 const ROUND = CONFIG.round;
@@ -55,27 +56,46 @@ function clearPools(state) {
   for (let index = 0; index < state.killFeed.items.length; index += 1) state.killFeed.items[index].active = false;
 }
 
+function swapPlayer(state) {
+  const player = state.player;
+  let bot = state.bots.find((actor) => actor.id === state.match.swappedBotId)
+    ?? state.bots.find((actor) => actor.team !== player.team);
+  if (!bot) return;
+  const team = player.team;
+  player.team = bot.team;
+  bot.team = team;
+  const spawn = player.spawn;
+  player.spawn = bot.spawn;
+  bot.spawn = spawn;
+  state.match.swappedBotId = player.team === 'vanguard' ? null : bot.id;
+}
+
 export function startRound(state) {
+  const switched = state.match.round === 8 && !state.match.sidesSwitched;
+  if (switched) {
+    swapPlayer(state);
+    state.match.sidesSwitched = true;
+  }
   state.phase = 'freeze';
   state.match.phaseTime = ROUND.freezeSeconds;
   state.match.winner = null;
   state.match.reason = '';
-  state.objective.state = 'idle';
-  state.objective.site = null;
-  state.objective.planted = false;
-  state.objective.timer = 0;
   state.ui.overlay = 'none';
   state.ui.hudVisible = true;
   state.ui.buyOpen = false;
-  state.ui.message = `ROUND ${state.match.round}`;
-  state.ui.messageTime = 2;
+  state.ui.message = switched ? 'SIDES SWITCHED' : `ROUND ${state.match.round}`;
+  state.ui.messageTime = switched ? 4 : 2;
 
   for (let index = 0; index < state.actors.length; index += 1) resetActor(state, state.actors[index]);
   clearPools(state);
+  setupCharge(state);
   resetBots(state);
 }
 
 export function startMatch(state) {
+  if (state.match.sidesSwitched) swapPlayer(state);
+  state.match.sidesSwitched = false;
+  state.match.swappedBotId = null;
   state.match.round = 1;
   state.match.roundsPlayed = 0;
   state.match.score.vanguard = 0;
@@ -142,12 +162,25 @@ export function stepRounds(state, dt) {
   }
 
   if (state.phase === 'live') {
-    state.match.phaseTime = Math.max(0, state.match.phaseTime - dt);
+    const objective = state.objective;
+    if (objective.result) {
+      const result = objective.result;
+      objective.result = null;
+      endRound(state, result.winner, result.reason);
+      return;
+    }
+
+    if (!objective.planted) state.match.phaseTime = Math.max(0, state.match.phaseTime - dt);
     const vanguard = aliveCount(state, 'vanguard');
     const syndicate = aliveCount(state, 'syndicate');
+
+    if (objective.planted) {
+      if (syndicate === 0) endRound(state, 'vanguard', 'Syndicate eliminated after the charge was planted.');
+      return;
+    }
     if (syndicate === 0) endRound(state, 'vanguard', 'Vanguard eliminated the Syndicate.');
-    else if (vanguard === 0) endRound(state, 'syndicate', 'Syndicate eliminated Vanguard.');
-    else if (state.match.phaseTime === 0) endRound(state, 'vanguard', 'Time expired — Vanguard hold the depot.');
+    else if (vanguard === 0) endRound(state, 'syndicate', 'Syndicate eliminated Vanguard before the charge.');
+    else if (state.match.phaseTime === 0) endRound(state, 'syndicate', 'Time expired — Syndicate hold the depot.');
     return;
   }
 

@@ -44,11 +44,16 @@ try {
   const summary = JSON.parse(match[1]);
   const rounds = summary.rounds ?? [];
   for (const round of rounds) {
-    console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive})`);
+    const site = round.planted ? `planted ${round.site}` : 'no plant';
+    console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
   }
   console.log(`moved=${summary.moved} autoNext=${summary.autoNext} respawnFull=${summary.respawnFull}`);
-  if (rounds.length < 3) {
+  if (rounds.length < 4) {
     console.error(`FAIL: only ${rounds.length} rounds simulated`);
+    failed = true;
+  }
+  if (!rounds.some((round) => /detonated|defused/.test(round.reason))) {
+    console.error('FAIL: no round ended by detonation or defuse');
     failed = true;
   }
   if (!summary.moved) {

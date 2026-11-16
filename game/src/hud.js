@@ -24,6 +24,11 @@ export function createHud() {
   const aliveV = document.getElementById('alive-v');
   const aliveS = document.getElementById('alive-s');
   const objective = document.getElementById('objective');
+  const carrier = document.getElementById('carrier');
+  const action = document.getElementById('action');
+  const actionLabel = document.getElementById('action-label');
+  const actionFill = document.getElementById('action-fill');
+  const actionHint = document.getElementById('action-hint');
   const health = document.getElementById('health');
   const armor = document.getElementById('armor');
   const money = document.getElementById('money');
@@ -49,6 +54,7 @@ export function createHud() {
   const killRows = [];
   const killCache = [];
   let crosshairScale = 1;
+  let actionPercent = -1;
   let deployHandler = () => {};
   play.addEventListener('click', () => deployHandler());
 
@@ -134,7 +140,9 @@ export function createHud() {
       else syndicateAlive += 1;
     }
 
-    setText(timer, formatTime(state.match.phaseTime));
+    const charge = state.objective;
+    const timeLeft = charge.planted ? charge.timer : state.match.phaseTime;
+    setText(timer, formatTime(timeLeft));
     setText(scoreV, String(state.match.score.vanguard));
     setText(scoreS, String(state.match.score.syndicate));
     setText(aliveV, `${vanguardAlive} LIVE`);
@@ -145,8 +153,15 @@ export function createHud() {
     setText(weaponName, weapon.name.toUpperCase());
     setText(ammoMag, String(weapon.mag));
     setText(ammoReserve, `/ ${weapon.reserve}`);
-    setText(phaseLabel, state.phase === 'live' ? 'LIVE' : state.phase === 'freeze' ? 'FREEZE' : state.phase === 'roundEnd' ? 'ROUND OVER' : state.phase === 'matchOver' ? 'MATCH OVER' : 'BRIEFING');
-    setText(centerMessage, weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '');
+    const phase = charge.planted ? 'CHARGE ARMED'
+      : state.phase === 'live' ? 'LIVE'
+        : state.phase === 'freeze' ? 'FREEZE'
+          : state.phase === 'roundEnd' ? 'ROUND OVER'
+            : state.phase === 'matchOver' ? 'MATCH OVER' : 'BRIEFING';
+    setText(phaseLabel, phase);
+    const message = weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '';
+    setText(centerMessage, message);
+    centerMessage.classList.toggle('big', message === 'SIDES SWITCHED');
 
     const scale = Math.min(3.2, 1 + player.spread * 90);
     if (Math.abs(scale - crosshairScale) > 0.03) {
@@ -154,10 +169,43 @@ export function createHud() {
       crosshair.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(2)})`;
     }
 
-    if (state.objective.planted) {
-      setText(objective, `SURGE CHARGE ARMED · SITE ${state.objective.site ?? 'A'}`);
+    if (charge.planted) {
+      setText(objective, `DEFUSE THE RELAY CHARGE · SITE ${charge.site}`);
+    } else if (charge.state === 'ground') {
+      setText(objective, 'RELAY CHARGE DROPPED · RECOVER IT');
+    } else if (charge.state === 'carried') {
+      setText(objective, `RELAY CHARGE · ATTACK SITE ${charge.attackSite ?? 'A'}`);
     } else {
       setText(objective, 'RELAY SITES A / B · HOLD THE DEPOT');
+    }
+
+    let carrierText = '';
+    if (charge.planted) {
+      carrierText = `CHARGE PLANTED · SITE ${charge.site} · ${formatTime(charge.timer)}`;
+    } else if (charge.state === 'carried') {
+      let holder = null;
+      for (let index = 0; index < state.actors.length; index += 1) {
+        if (state.actors[index].id === charge.carrierId) { holder = state.actors[index]; break; }
+      }
+      carrierText = holder && holder.isPlayer ? 'CHARGE · YOU' : `CHARGE · ${holder ? holder.name : 'UNKNOWN'}`;
+    } else if (charge.state === 'ground') {
+      carrierText = 'CHARGE · DROPPED';
+    }
+    carrier.hidden = carrierText === '';
+    setText(carrier, carrierText);
+
+    const progress = charge.planted ? charge.defuseProgress : charge.plantProgress;
+    const showAction = state.phase === 'live' && state.ui.overlay === 'none'
+      && (progress > 0 || charge.hint !== '');
+    action.hidden = !showAction;
+    if (showAction) {
+      setText(actionLabel, charge.planted ? 'DEFUSING' : 'PLANTING');
+      setText(actionHint, charge.hint);
+      const percent = Math.round(Math.min(1, progress) * 100);
+      if (percent !== actionPercent) {
+        actionPercent = percent;
+        actionFill.style.width = `${percent}%`;
+      }
     }
 
     for (let index = 0; index < slotEls.length; index += 1) {

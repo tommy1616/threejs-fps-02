@@ -42,14 +42,14 @@ const BOXES = Object.freeze([
   box('east-div-s', 16, 0, -3, 17, 4.6, 3, 'steel', 'wall'),
   box('east-div-n', 16, 0, 7, 17, 4.6, 16, 'steel', 'wall'),
 
-  box('a-pylon', -17.4, 0, -9.4, -16.6, 2.4, -8.6, 'accent', 'objective'),
+  box('a-pylon', -17.4, 0, -9.4, -16.6, 2.4, -8.6, 'steel', 'objective'),
   box('a-pedestal', -18, 0, -10, -16, 0.35, -8, 'rust', 'solid'),
   box('a-crate-1', -22, 0, -13.5, -19.5, 1.2, -11.5, 'crate', 'cover'),
   box('a-crate-2', -14, 0, -14.5, -11.5, 2.2, -13, 'crate', 'cover'),
   box('a-crate-3', -21.5, 0, -7, -20, 1.1, -5.5, 'crate', 'cover'),
   box('a-crate-4', -13.5, 0, -7, -11.5, 1.1, -6, 'crate', 'cover'),
 
-  box('b-pylon', 16.6, 0, -9.4, 17.4, 2.4, -8.6, 'accent', 'objective'),
+  box('b-pylon', 16.6, 0, -9.4, 17.4, 2.4, -8.6, 'steel', 'objective'),
   box('b-pedestal', 16, 0, -10, 18, 0.35, -8, 'rust', 'solid'),
   box('b-tank-1', 12, 0, -14, 14.5, 3, -11.5, 'rust', 'cover'),
   box('b-tank-2', 20.5, 0, -11, 22.5, 2.2, -9, 'crate', 'cover'),

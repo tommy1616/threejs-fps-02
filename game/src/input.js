@@ -16,6 +16,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     jumpPressed: false,
     crouch: false,
     walk: false,
+    interact: false,
     reloadPressed: false,
     buyPressed: false,
     slotPressed: 0,
@@ -99,6 +100,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     snapshot.strafe = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
     snapshot.crouch = keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC');
     snapshot.walk = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    snapshot.interact = keys.has('KeyE');
     snapshot.jumpPressed = pending.jump;
     snapshot.reloadPressed = pending.reload;
     snapshot.buyPressed = pending.buy;

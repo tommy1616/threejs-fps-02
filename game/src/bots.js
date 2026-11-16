@@ -8,8 +8,7 @@ const sight = createRayHit();
 const MOVE = CONFIG.movement;
 const BOTS = CONFIG.bots;
 
-const DEFENDER_HOLDS = ['aShort', 'aSite', 'mN', 'bShort'];
-const ATTACKER_TARGETS = ['aSite', 'aSite', 'bSite', 'bSite', 'aSite'];
+const DEFENDER_HOLDS = ['aShort', 'bShort', 'mN', 'mC', 'mN'];
 
 function clamp(value, min, max) {
   return value < min ? min : value > max ? max : value;
@@ -107,13 +106,24 @@ function shouldHunt(state, bot) {
 
 function chooseAdvanceNode(state, bot, hunt) {
   const ai = bot.ai;
+  const objective = state.objective;
   let target = ai.objectiveNode || ai.holdNode || 'mC';
-  if (hunt) {
+  if (objective.planted) {
+    target = objective.site === 'B' ? 'bSite' : 'aSite';
+  } else if (bot.team === 'vanguard') {
+    target = objective.state === 'ground'
+      ? nearestNode(objective.x, objective.z).id
+      : objective.attackSite === 'B' ? 'bSite' : 'aSite';
+    if (hunt) {
+      const enemy = nearestEnemy(state, bot);
+      if (enemy) target = nearestNode(enemy.position.x, enemy.position.z).id;
+    }
+  } else if (hunt) {
     const enemy = nearestEnemy(state, bot);
     if (enemy) target = nearestNode(enemy.position.x, enemy.position.z).id;
   }
   const here = nearestNode(bot.position.x, bot.position.z).id;
-  if (target === here) {
+  if (target === here && !objective.planted) {
     target = target === 'aSite' ? 'bSite' : target === 'bSite' ? 'aSite'
       : ai.objectiveNode === 'bSite' ? 'aSite' : 'bSite';
   }
@@ -154,17 +164,15 @@ function updateStuck(state, bot, dt) {
 }
 
 export function resetBots(state) {
-  let vanguardIndex = 0;
-  let syndicateIndex = 0;
+  let defenderIndex = 0;
   for (let index = 0; index < state.bots.length; index += 1) {
     const bot = state.bots[index];
     let target;
     if (bot.team === 'vanguard') {
-      target = DEFENDER_HOLDS[vanguardIndex % DEFENDER_HOLDS.length];
-      vanguardIndex += 1;
+      target = state.objective.attackSite === 'B' ? 'bSite' : 'aSite';
     } else {
-      target = ATTACKER_TARGETS[syndicateIndex % ATTACKER_TARGETS.length];
-      syndicateIndex += 1;
+      target = DEFENDER_HOLDS[defenderIndex % DEFENDER_HOLDS.length];
+      defenderIndex += 1;
     }
     const ai = bot.ai;
     ai.state = 'patrol';
@@ -315,6 +323,7 @@ export function stepBots(state, dt) {
       }
     }
 
+    const carrying = state.objective.state === 'carried' && state.objective.carrierId === bot.id;
     ai.think -= dt;
     if (ai.think <= 0) {
       ai.think = 0.1 + state.rng() * 0.06;
@@ -326,7 +335,7 @@ export function stepBots(state, dt) {
           ai.aimError = BOTS.aimError * 1.7;
           ai.trackTime = 0;
         }
-        ai.state = 'engage';
+        ai.state = carrying ? 'patrol' : 'engage';
         ai.lastSeenX = seen.position.x;
         ai.lastSeenZ = seen.position.z;
       } else if (ai.state !== 'search') {
@@ -350,8 +359,13 @@ export function stepBots(state, dt) {
       }
     }
 
-    if (target && canSee(state, bot, target)) {
+    if (carrying && ai.state === 'engage') {
+      setRoute(state, bot, state.objective.attackSite === 'B' ? 'bSite' : 'aSite', 'patrol');
+    }
+    if (target && canSee(state, bot, target) && !carrying) {
       ai.state = 'engage';
+      bot.velocity.x = 0;
+      bot.velocity.z = 0;
       ai.trackTime += dt;
       ai.reaction = Math.max(0, ai.reaction - dt);
       ai.aimError = Math.max(0.0035, ai.aimError * Math.max(0, 1 - dt * 1.9));
@@ -364,7 +378,23 @@ export function stepBots(state, dt) {
         }
       }
     } else {
-      if (ai.state === 'engage') {
+      if (state.objective.planted && bot.team === 'syndicate') {
+        const dx = state.objective.x - bot.position.x;
+        const dz = state.objective.z - bot.position.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance > 1.1) {
+          const inv = 1 / (distance || 1);
+          moveActor(bot, dx * inv, dz * inv, MOVE.walkSpeed * 0.86, dt, false);
+        } else {
+          bot.velocity.x = 0;
+          bot.velocity.z = 0;
+        }
+        bot.yaw = turnToward(bot.yaw, Math.atan2(-dx, -dz), dt * 8);
+        ai.state = 'hold';
+        updateStuck(state, bot, dt);
+        continue;
+      }
+      if (ai.state === 'engage' && !carrying) {
         ai.state = 'search';
         ai.targetId = null;
         ai.searchTime = 3.2;
@@ -373,10 +403,14 @@ export function stepBots(state, dt) {
       }
       if (ai.state === 'search') {
         ai.searchTime -= dt;
-        if (!stepRoute(bot, dt) && ai.searchTime <= 0) {
-          setRoute(state, bot, chooseAdvanceNode(state, bot, true), 'patrol');
+        if (!stepRoute(bot, dt)) {
+          bot.velocity.x = 0;
+          bot.velocity.z = 0;
+          if (ai.searchTime <= 0) setRoute(state, bot, chooseAdvanceNode(state, bot, true), 'patrol');
         }
       } else if (ai.state === 'hold') {
+        bot.velocity.x = 0;
+        bot.velocity.z = 0;
         ai.holdTimer -= dt;
         if (ai.holdTimer <= 0) {
           setRoute(state, bot, chooseAdvanceNode(state, bot, shouldHunt(state, bot)), 'patrol');
@@ -388,6 +422,8 @@ export function stepBots(state, dt) {
       } else {
         const moving = stepRoute(bot, dt);
         if (!moving) {
+          bot.velocity.x = 0;
+          bot.velocity.z = 0;
           const scan = Math.sin(state.time * 0.7 + index * 1.3) * 0.42;
           bot.yaw = turnToward(bot.yaw, ai.holdYaw + scan, dt * 2.2);
           bot.pitch += (0 - bot.pitch) * Math.min(1, dt * 4);
