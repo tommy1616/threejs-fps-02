@@ -2,9 +2,8 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { createRayHit, raycastSolids } from './map.js';
-import { applyDamage } from './combat.js';
+import { applyDamage, emitNoise } from './combat.js';
 import { throwGrenade } from './grenades.js';
-import { emitNoise, emitSound } from './audio.js';
 
 const MOVE = CONFIG.movement;
 const dir = new THREE.Vector3();
@@ -128,42 +127,6 @@ function addTracer(state, sx, sy, sz, dx, dy, dz, length, team) {
 	}
 }
 
-function impact(state, x, y, z, nx, ny, nz) {
-	let decal = null;
-	for (let index = 0; index < state.decals.length; index += 1) {
-		if (!state.decals[index].active) {
-			decal = state.decals[index];
-			break;
-		}
-	}
-	if (!decal) {
-		decal = state.decals[state.decalHead % state.decals.length];
-		state.decalHead += 1;
-	}
-	Object.assign(decal, { active: true, x, y, z, nx, ny, nz, ttl: 20, maxTtl: 20 });
-	for (let index = 0; index < 3; index += 1) {
-		let spark = null;
-		for (let slot = 0; slot < state.sparks.length; slot += 1) {
-			if (!state.sparks[slot].active) {
-				spark = state.sparks[slot];
-				break;
-			}
-		}
-		if (!spark) {
-			spark = state.sparks[state.sparkHead % state.sparks.length];
-			state.sparkHead += 1;
-		}
-		Object.assign(spark, {
-			active: true,
-			x: x + (index - 1) * 0.04,
-			y: y + (index - 1) * 0.03,
-			z,
-			ttl: 0.25,
-			maxTtl: 0.25,
-		});
-	}
-}
-
 function spreadTarget(actor, weapon) {
 	const speed = Math.hypot(actor.velocity.x, actor.velocity.z);
 	let multiplier = 1 + weapon.moveMultiplier * Math.min(1, speed / MOVE.walkSpeed);
@@ -204,7 +167,6 @@ export function fireHitscan(state, actor, weapon) {
 	actor.recoilPitch += pattern[step][0];
 	actor.recoilYaw += pattern[step][1];
 	emitNoise(state, actor.position.x, actor.position.z, actor.team, actor.id);
-	emitSound(state, 'shot', actor.position.x, actor.position.y + actor.eye, actor.position.z, weapon.kind);
 
 	computeAim(state, actor);
 	const eyeY = actor.position.y + actor.eye;
@@ -239,7 +201,6 @@ export function fireHitscan(state, actor, weapon) {
 		endX = mapHit.x;
 		endY = mapHit.y;
 		endZ = mapHit.z;
-		impact(state, mapHit.x, mapHit.y, mapHit.z, mapHit.normalX, mapHit.normalY, mapHit.normalZ);
 	}
 
 	const startX = actor.position.x + right.x * 0.14 + dir.x * 0.4;
@@ -258,7 +219,6 @@ export function startReload(state, actor, silent = false) {
 		state.ui.message = 'RELOADING';
 		state.ui.messageTime = weapon.reloadTime;
 	}
-	emitSound(state, 'reload', actor.position.x, actor.position.y + actor.eye, actor.position.z);
 	return true;
 }
 
@@ -300,7 +260,6 @@ export function stepWeapons(state, input, dt) {
 			const taken = Math.min(needed, weapon.reserve);
 			weapon.mag += taken;
 			weapon.reserve -= taken;
-			emitSound(state, 'reloadEnd', player.position.x, player.position.y + player.eye, player.position.z);
 			if (state.ui.message === 'RELOADING') state.ui.messageTime = 0;
 		}
 	} else if (state.ui.message === 'RELOADING') {
@@ -325,7 +284,6 @@ export function stepWeapons(state, input, dt) {
 				weapon.fireCooldown = 0.25;
 				state.ui.message = 'EMPTY MAG';
 				state.ui.messageTime = 0.9;
-				emitSound(state, 'empty', player.position.x, player.position.y + player.eye, player.position.z);
 			}
 		} else if (weapon.fireCooldown <= 0) {
 			fireHitscan(state, player, weapon);

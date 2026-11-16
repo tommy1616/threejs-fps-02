@@ -1,8 +1,7 @@
 // grenades.js — grenades and smoke.
 import { CONFIG } from './config.js';
 import { createRayHit, overlapBoxes, raycastSolids } from './map.js';
-import { applyDamage } from './combat.js';
-import { emitNoise, emitSound } from './audio.js';
+import { applyDamage, emitNoise } from './combat.js';
 
 const RADIUS = 0.1;
 const FRAG = { name: 'Frag Charge', reward: 300 };
@@ -39,7 +38,6 @@ function deploySmoke(state, x, z) {
 		item.z = z;
 		item.radius = 4.5;
 		item.ttl = 15;
-		emitSound(state, 'smoke', x, 1, z);
 		emitNoise(state, x, z, 'vanguard', null, 2.5);
 		return;
 	}
@@ -76,7 +74,6 @@ export function throwGrenade(state, actor, kind, lob) {
 function explodeFrag(state, grenade) {
 	const owner = actorById(state, grenade.ownerId);
 	blast(state, grenade.x, grenade.y, grenade.z, 0.35);
-	emitSound(state, 'explosion', grenade.x, grenade.y, grenade.z);
 	emitNoise(state, grenade.x, grenade.z, grenade.team, grenade.ownerId, 4);
 	for (let index = 0; index < state.actors.length; index += 1) {
 		const target = state.actors[index];
@@ -125,7 +122,6 @@ function moveGrenade(state, grenade, dt) {
 		grenade.vz *= 0.78;
 		if (grenade.sound <= 0) {
 			grenade.sound = 0.14;
-			emitSound(state, 'bounce', grenade.x, grenade.y, grenade.z);
 			emitNoise(state, grenade.x, grenade.z, grenade.team, grenade.ownerId, 0.7);
 		}
 	}

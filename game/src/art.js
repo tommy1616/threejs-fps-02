@@ -23,19 +23,17 @@ export function createTextures(seed) {
 	const rng = mulberry32(seed ^ 0x51ed270b);
 	const specks = (ctx, size, count) => {
 		for (let index = 0; index < count; index += 1) {
-			ctx.fillStyle = `rgba(38,45,42,${rng() * 0.16})`;
+			ctx.fillStyle = `rgba(38,45,42,${rng() * 0.07})`;
 			ctx.fillRect(rng() * size, rng() * size, 2, 2);
 		}
 	};
-	const wall = texture(256, 2, (ctx, size) => {
+	const wall = texture(256, 3, (ctx, size) => {
 		ctx.fillStyle = PALETTE.sand;
 		ctx.fillRect(0, 0, size, size);
-		specks(ctx, size, 550);
-		for (let index = 0; index < 4; index += 1) {
-			ctx.fillStyle = `rgba(120,92,55,${0.06 + rng() * 0.07})`;
-			ctx.beginPath();
-			ctx.arc(rng() * size, rng() * size, 14 + rng() * 22, 0, Math.PI * 2);
-			ctx.fill();
+		specks(ctx, size, 320);
+		for (let index = 0; index < 3; index += 1) {
+			ctx.fillStyle = `rgba(150,128,90,${0.025 + rng() * 0.02})`;
+			ctx.fillRect(rng() * size, 0, 16 + rng() * 38, size);
 		}
 	});
 	const floor = texture(256, 8, (ctx, size) => {
@@ -116,7 +114,7 @@ function mesh(material, sx, sy, sz, x, y, z, geometry = UNIT) {
 export function createProps(scene, materials, textures, props) {
 	for (const prop of props) {
 		if (prop.type === 'relay') {
-			scene.add(mesh(materials.steel, 0.9, 0.8, 0.55, prop.x, 0.4, prop.z));
+			scene.add(mesh(materials[prop.color], 0.9, 0.8, 0.55, prop.x, 0.4, prop.z));
 			scene.add(mesh(materials.steel, 0.08, 1.5, 0.08, prop.x, 1.2, prop.z));
 			scene.add(mesh(materials[prop.color], 0.75, 0.08, 0.58, prop.x, 0.82, prop.z));
 		} else if (prop.type === 'barrel') {

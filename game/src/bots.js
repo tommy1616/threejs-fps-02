@@ -4,7 +4,7 @@ import { MAP, createRayHit, raycastSolids } from './map.js';
 import { moveActor } from './player.js';
 import { fireHitscan, startReload } from './weapon.js';
 import { smokeBlocks, throwGrenade } from './grenades.js';
-import { emitNoise, emitSound } from './audio.js';
+import { emitNoise } from './combat.js';
 
 const NODES = new Map(MAP.waypoints.map((node) => [node.id, node]));
 const sight = createRayHit();
@@ -502,7 +502,6 @@ export function stepBots(state, dt) {
 			if (bot.stepTimer <= 0) {
 				bot.stepTimer = 0.42;
 				emitNoise(state, bot.position.x, bot.position.z, bot.team, bot.id, 1.4, 9);
-				emitSound(state, 'step', bot.position.x, bot.position.y + 0.1, bot.position.z);
 			}
 		} else {
 			bot.stepTimer = 0;

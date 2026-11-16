@@ -2,8 +2,8 @@
 export const PALETTE = {
 	sky: '#b7d0cd',
 	fog: '#ead8b6',
-	salt: '#e9e1cb',
-	sand: '#d8c49e',
+	salt: '#eee7d4',
+	sand: '#ddcba8',
 	steel: '#627271',
 	rust: '#a65333',
 	crate: '#b48650',

@@ -67,7 +67,7 @@ const PROPS = Object.freeze([
 	{ type: 'paint', x: -21, z: 4, w: 0.35, d: 15, color: '#3f9fa6' },
 	{ type: 'paint', x: 21, z: 4, w: 0.35, d: 15, color: '#b85f3c' },
 	{ type: 'sign', x: 0, y: 1.9, z: 2.06, text: 'SALTWORKS', color: '#e9e1cb' },
-	{ type: 'sign', x: -3.94, y: 1.8, z: 0, yaw: Math.PI / 2, text: 'A ← BRINE LINE', color: '#3f9fa6' },
+	{ type: 'sign', x: -13, y: 1.8, z: -4.04, yaw: Math.PI, text: 'A ← BRINE LINE', color: '#3f9fa6' },
 	{ type: 'sign', x: 3.94, y: 1.8, z: 0, yaw: -Math.PI / 2, text: 'PUMP HOUSE → B', color: '#b85f3c' },
 	{ type: 'relay', x: -17, z: -9, color: 'vanguard' },
 	{ type: 'relay', x: 17, z: -9, color: 'syndicate' },

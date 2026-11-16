@@ -8,23 +8,29 @@ import { applyLook } from './player.js';
 import { restartMatch, startMatch } from './rounds.js';
 import { buyItem, canBuy } from './economy.js';
 import { SHOP } from './weapons.js';
-import { createAudio } from './audio.js';
 import { advance } from './simulation.js';
-import { setupScenario } from './shots.js';
 
 const params = new URLSearchParams(window.location.search);
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const state = createGameState(seed);
-const scenario = setupScenario(state, params);
-const shot = scenario.shot;
-let frozen = scenario.frozen;
+const shot = params.get('shot');
+const dev = Boolean(shot) || params.has('test') || params.has('idle') || params.has('dev');
+let frozen = dev;
 const hud = createHud();
 let started = false;
 let snapshot = null;
 
 const world = createWorld(document.getElementById('game'), state);
-const input = shot ? null : createInput(world.domElement, onLockChange);
-const audio = shot ? null : createAudio();
+const input = dev ? null : createInput(world.domElement, onLockChange);
+
+if (dev) {
+	window.__stage = {
+		state,
+		advance,
+		freeze() { frozen = true; },
+		unfreeze() { frozen = false; },
+	};
+}
 
 window.__game = Object.freeze({
 	state: readonlyView(state),
@@ -36,7 +42,7 @@ window.__game = Object.freeze({
 });
 
 function setBuyOpen(open) {
-	if (shot || !input) return;
+	if (dev || !input) return;
 	if (open) {
 		if (!canBuy(state, state.player)) return;
 		state.ui.buyOpen = true;
@@ -49,7 +55,7 @@ function setBuyOpen(open) {
 }
 
 function onLockChange(locked) {
-	if (shot) return;
+	if (dev) return;
 	if (locked) {
 		if (!started) {
 			started = true;
@@ -65,8 +71,7 @@ function onLockChange(locked) {
 }
 
 hud.onDeploy(() => {
-	if (shot || !input) return;
-	audio.init();
+	if (dev || !input) return;
 	if (state.phase === 'matchOver') restartMatch(state);
 	input.requestLock();
 });
@@ -77,7 +82,7 @@ hud.onBuyClose(() => setBuyOpen(false));
 hud.onBuyButton(() => setBuyOpen(true));
 
 function beginFrame() {
-	if (shot) return;
+	if (dev) return;
 	snapshot = input.takeSnapshot();
 	if (state.ui.buyOpen) {
 		if (!canBuy(state, state.player)) setBuyOpen(false);
@@ -117,7 +122,6 @@ let firstFrame = true;
 function render(alpha) {
 	world.render(state, alpha);
 	hud.sync(state);
-	audio?.update(state);
 	if (firstFrame) {
 		firstFrame = false;
 		document.body.dataset.ready = '1';

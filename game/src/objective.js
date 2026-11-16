@@ -1,7 +1,7 @@
 // objective.js — relay objective.
 import { CONFIG } from './config.js';
 import { MAP } from './map.js';
-import { emitNoise, emitSound } from './audio.js';
+import { emitNoise } from './combat.js';
 
 const ROUND = CONFIG.round;
 
@@ -40,7 +40,6 @@ function plantCharge(state, actor, site) {
 	state.ui.message = `CHARGE PLANTED · SITE ${site}`;
 	state.ui.messageTime = 2.2;
 	emitNoise(state, actor.position.x, actor.position.z, 'vanguard', actor.id, 4);
-	emitSound(state, 'plant', actor.position.x, actor.position.y + 0.5, actor.position.z);
 }
 
 export function setupCharge(state) {

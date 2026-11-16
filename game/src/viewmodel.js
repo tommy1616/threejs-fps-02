@@ -87,7 +87,7 @@ function buildPistol(materials) {
 	group.add(part(materials.crate, 0.12, 0.13, 0.15, 0, -0.1, 0.12));
 	group.add(part(materials.ink, 0.13, 0.13, 0.28, -0.02, -0.15, 0.28));
 	const flash = addFlash(group, 0, 0.01, -0.32);
-	return { group, baseX: 0.26, baseY: -0.22, baseZ: -0.52, scale: 0.85, flash };
+	return { group, baseX: 0.34, baseY: -0.28, baseZ: -0.62, scale: 0.5, flash };
 }
 
 function buildTracers(scene, count) {

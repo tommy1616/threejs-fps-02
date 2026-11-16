@@ -236,45 +236,6 @@ function createNadeView(scene, state) {
 	};
 }
 
-function createImpactView(scene, state) {
-	const decalGeo = new THREE.PlaneGeometry(0.18, 0.18);
-	const sparkGeo = new THREE.SphereGeometry(0.035, 5, 4);
-	const decalMat = new THREE.MeshBasicMaterial({ color: PALETTE.ink, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false });
-	const sparkMat = new THREE.MeshBasicMaterial({ color: PALETTE.accent, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
-	const decals = state.decals.map(() => {
-		const item = new THREE.Mesh(decalGeo, decalMat);
-		item.visible = false;
-		scene.add(item);
-		return item;
-	});
-	const sparks = state.sparks.map(() => {
-		const item = new THREE.Mesh(sparkGeo, sparkMat);
-		item.visible = false;
-		scene.add(item);
-		return item;
-	});
-	return {
-		update(state) {
-			for (let index = 0; index < decals.length; index += 1) {
-				const item = state.decals[index];
-				const mesh = decals[index];
-				mesh.visible = item.active;
-				if (!item.active) continue;
-				mesh.position.set(item.x + item.nx * 0.012, item.y + item.ny * 0.012, item.z + item.nz * 0.012);
-				mesh.lookAt(item.x + item.nx, item.y + item.ny, item.z + item.nz);
-			}
-			for (let index = 0; index < sparks.length; index += 1) {
-				const item = state.sparks[index];
-				const mesh = sparks[index];
-				mesh.visible = item.active;
-				if (!item.active) continue;
-				mesh.position.set(item.x, item.y, item.z);
-				mesh.scale.setScalar(0.4 + item.ttl / item.maxTtl);
-			}
-		},
-	};
-}
-
 export function createWorld(container, state) {
 	const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
@@ -306,7 +267,6 @@ export function createWorld(container, state) {
 	createProps(scene, materials, textures, MAP.props);
 	const objectiveView = createObjectiveView(scene, materials);
 	const nadeView = createNadeView(scene, state);
-	const impactView = createImpactView(scene, state);
 	const botRenders = createBotRenders(scene, state);
 	const viewmodels = createViewmodels(camera, scene, state);
 
@@ -359,7 +319,6 @@ export function createWorld(container, state) {
 		updateCamera(state, alpha);
 		objectiveView.update(state);
 		nadeView.update(state);
-		impactView.update(state);
 		botRenders.update(state, alpha);
 		viewmodels.update(state);
 		renderer.render(scene, camera);

@@ -1,6 +1,6 @@
 [
-  { "name": "1-cover.jpg", "query": "?shot=start&seed=1" },
-  { "name": "2-firefight.jpg", "query": "?shot=play&seed=1" },
-  { "name": "3-plant.jpg", "query": "?shot=plant&seed=1" },
-  { "name": "4-buy.jpg", "query": "?shot=buy&seed=1" }
+	{ "name": "1-cover.jpg", "query": "?shot=cover&seed=1" },
+	{ "name": "2-plant.jpg", "query": "?shot=plant&seed=1" },
+	{ "name": "3-buy.jpg", "query": "?shot=buy&seed=1" },
+	{ "name": "4-title.jpg", "query": "?shot=start&seed=1" }
 ]

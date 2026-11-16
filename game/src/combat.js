@@ -4,6 +4,18 @@ import { addMoney } from './economy.js';
 
 const FEED_SECONDS = 6;
 
+export function emitNoise(state, x, z, team, actorId, ttl = 1.4, radius = 22) {
+	const noise = state.noises.items[state.noises.head];
+	noise.active = true;
+	noise.x = x;
+	noise.z = z;
+	noise.team = team;
+	noise.actorId = actorId;
+	noise.ttl = ttl;
+	noise.radius = radius;
+	state.noises.head = (state.noises.head + 1) % state.noises.items.length;
+}
+
 export function pushKillFeed(state, killer, victim, weapon, headshot) {
 	const feed = state.killFeed;
 	const entry = feed.items[feed.head];
@@ -54,17 +66,5 @@ export function stepCombat(state, dt) {
 		if (!noise.active) continue;
 		noise.ttl -= dt;
 		if (noise.ttl <= 0) noise.active = false;
-	}
-	for (let index = 0; index < state.decals.length; index += 1) {
-		const decal = state.decals[index];
-		if (!decal.active) continue;
-		decal.ttl -= dt;
-		if (decal.ttl <= 0) decal.active = false;
-	}
-	for (let index = 0; index < state.sparks.length; index += 1) {
-		const spark = state.sparks[index];
-		if (!spark.active) continue;
-		spark.ttl -= dt;
-		if (spark.ttl <= 0) spark.active = false;
 	}
 }
