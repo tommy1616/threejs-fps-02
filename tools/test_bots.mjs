@@ -45,8 +45,7 @@ try {
   const rounds = summary.rounds ?? [];
   for (const round of rounds) {
     const site = round.planted ? `planted ${round.site}` : 'no plant';
-    console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
-    console.log(`  V: ${round.v} | S: ${round.s}`);
+    console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, first contact ${round.contact}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
   }
   const average = rounds.reduce((sum, round) => sum + round.liveTime, 0) / (rounds.length || 1);
   const reasons = { elimination: 0, detonation: 0, defuse: 0, time: 0 };

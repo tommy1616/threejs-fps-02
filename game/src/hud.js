@@ -54,7 +54,6 @@ export function createHud() {
 	const copy = document.getElementById('overlay-copy');
 	const overlayScore = document.getElementById('overlay-score');
 	const play = document.getElementById('play');
-	const overlayKeys = document.getElementById('overlay-keys');
 	const slotCache = ['', '', '', ''];
 	const killRows = [];
 	const killCache = [];
@@ -115,7 +114,6 @@ export function createHud() {
 			setText(copy, 'Vanguard holds the brine line. Syndicate wants the relay. Five on five, first to eight rounds.');
 			setText(play, 'Deploy');
 			overlayScore.hidden = true;
-			overlayKeys.hidden = false;
 			return;
 		}
 		if (mode === 'pause') {
@@ -124,17 +122,15 @@ export function createHud() {
 			setText(copy, 'Paused. Click to re-enter the depot.');
 			setText(play, 'Resume');
 			overlayScore.hidden = true;
-			overlayKeys.hidden = false;
 			return;
 		}
 		if (mode === 'matchOver') {
 			setText(eyebrow, 'MATCH COMPLETE · SALTWORKS');
 			setText(title, state.match.winner === 'vanguard' ? 'VANGUARD WINS THE MATCH' : 'SYNDICATE WINS THE MATCH');
-			setText(copy, 'First to eight rounds. Press Enter or click below to redeploy.');
+			setText(copy, 'First to eight. Press Enter to redeploy.');
 			overlayScore.hidden = false;
 			setText(overlayScore, `${state.match.score.vanguard} — ${state.match.score.syndicate}`);
 			setText(play, 'Play again');
-			overlayKeys.hidden = true;
 			return;
 		}
 
@@ -147,7 +143,6 @@ export function createHud() {
 		overlayScore.hidden = false;
 		setText(overlayScore, `${state.match.score.vanguard} — ${state.match.score.syndicate}`);
 		setText(play, 'Next round');
-		overlayKeys.hidden = true;
 	}
 
 	function sync(state) {

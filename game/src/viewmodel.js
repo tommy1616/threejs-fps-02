@@ -57,6 +57,9 @@ function buildRifle(materials) {
 	group.add(part(materials.crate, 0.08, 0.09, 0.24, 0, -0.01, 0.36));
 	group.add(part(materials.ink, 0.06, 0.18, 0.1, 0, -0.13, -0.04));
 	group.add(part(materials.vanguard, 0.025, 0.03, 0.12, 0, 0.065, -0.1));
+	group.add(part(materials.crate, 0.12, 0.13, 0.16, 0, -0.12, 0.12));
+	group.add(part(materials.ink, 0.13, 0.13, 0.34, -0.02, -0.16, 0.32));
+	group.add(part(materials.crate, 0.11, 0.11, 0.14, 0, -0.07, -0.34));
 	const flash = addFlash(group, 0, 0.02, -0.7);
 	return { group, baseX: 0.32, baseY: -0.3, baseZ: -0.7, scale: 0.74, flash };
 }
@@ -68,6 +71,8 @@ function buildSmg(materials) {
 	group.add(part(materials.steel, 0.05, 0.2, 0.09, 0, -0.13, 0.02));
 	group.add(part(materials.crate, 0.06, 0.16, 0.08, 0, -0.1, 0.16));
 	group.add(part(materials.vanguard, 0.022, 0.028, 0.1, 0, 0.06, -0.08));
+	group.add(part(materials.crate, 0.12, 0.13, 0.15, 0, -0.12, 0.1));
+	group.add(part(materials.ink, 0.13, 0.13, 0.3, -0.02, -0.16, 0.28));
 	const flash = addFlash(group, 0, 0.015, -0.42);
 	return { group, baseX: 0.27, baseY: -0.25, baseZ: -0.56, scale: 0.8, flash };
 }
@@ -79,6 +84,8 @@ function buildPistol(materials) {
 	grip.rotation.x = -0.18;
 	group.add(grip);
 	group.add(part(materials.accent, 0.022, 0.022, 0.05, 0, 0.045, -0.08));
+	group.add(part(materials.crate, 0.12, 0.13, 0.15, 0, -0.1, 0.12));
+	group.add(part(materials.ink, 0.13, 0.13, 0.28, -0.02, -0.15, 0.28));
 	const flash = addFlash(group, 0, 0.01, -0.32);
 	return { group, baseX: 0.26, baseY: -0.22, baseZ: -0.52, scale: 0.85, flash };
 }
@@ -109,6 +116,9 @@ export function createViewmodels(camera, scene, state) {
 	const views = WEAPONS.map((weapon) => {
 		const model = weapon.kind === 'rifle' ? buildRifle(materials)
 			: weapon.kind === 'smg' ? buildSmg(materials) : buildPistol(materials);
+		if (weapon.kind === 'marksman') {
+			model.group.add(part(materials.ink, 0.07, 0.07, 0.28, 0, 0.13, -0.05));
+		}
 		model.group.position.set(model.baseX, model.baseY, model.baseZ);
 		model.group.scale.setScalar(model.scale);
 		model.group.visible = false;

@@ -16,8 +16,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--white); font-family: var(--font-ui); }
 #game, #game canvas { position: fixed; inset: 0; display: block; }
-#hud { position: fixed; inset: 0; pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
-#hud[hidden], .overlay[hidden], #buy-menu[hidden], #overlay-score[hidden], #overlay-keys[hidden] { display: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud[hidden], .overlay[hidden], #buy-menu[hidden], #overlay-score[hidden] { display: none; }
 
 #crosshair { position: fixed; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); }
 #crosshair i { position: absolute; background: var(--white); opacity: 0.9; }
@@ -25,7 +25,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
 #crosshair i:nth-child(2) { left: 11px; bottom: 0; width: 2px; height: 8px; }
 #crosshair i:nth-child(3) { top: 11px; left: 0; height: 2px; width: 8px; }
 #crosshair i:nth-child(4) { top: 11px; right: 0; height: 2px; width: 8px; }
-#crosshair::after { content: ''; position: absolute; left: 10px; top: 10px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 3px rgba(0, 0, 0, 0.8); }
 
 #hitmarker { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(45deg); opacity: 0; }
 #hitmarker.on { opacity: 1; }
@@ -53,7 +52,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
 
 #objective { position: fixed; top: 104px; left: 50%; transform: translateX(-50%); padding: 5px 12px; font-family: var(--font-readout); font-size: 10px; letter-spacing: 0.12em; color: var(--salt); background: rgba(20, 27, 28, 0.62); border: 1px solid var(--hairline); border-radius: 2px; }
 #carrier { position: fixed; top: 132px; left: 50%; transform: translateX(-50%); font-family: var(--font-readout); font-size: 10px; letter-spacing: 0.16em; color: var(--salt); background: rgba(20, 27, 28, 0.62); border: 1px solid var(--hairline); border-radius: 2px; padding: 4px 10px; }
-#center-message { position: fixed; top: 164px; left: 50%; transform: translateX(-50%); font-family: var(--font-readout); font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85); }
+#center-message { position: fixed; top: 164px; left: 50%; transform: translateX(-50%); font-family: var(--font-readout); font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
 #center-message.big { font-size: clamp(22px, 3vw, 36px); letter-spacing: 0.18em; }
 #killfeed { position: fixed; top: 150px; right: 32px; display: grid; gap: 4px; font-family: var(--font-readout); font-size: 11px; }
 .kill-row { padding: 4px 8px; background: rgba(20, 27, 28, 0.72); border-right: 2px solid var(--muted); color: var(--salt); white-space: nowrap; letter-spacing: 0.03em; }
@@ -92,23 +91,19 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); 
 .buy-cat { font-family: var(--font-readout); font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
 .buy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .buy-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 9px; font-family: var(--font-readout); font-size: 11px; color: var(--white); background: rgba(52, 66, 68, 0.96); border: 1px solid rgba(242, 238, 226, 0.28); cursor: pointer; text-align: left; }
-.buy-item:hover { background: rgba(78, 96, 98, 0.98); border-color: var(--accent); }
 .buy-item b { color: var(--accent); font-weight: 500; }
 .buy-item.off { opacity: 0.3; filter: grayscale(1); cursor: default; }
 #buy-button { position: fixed; top: 110px; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 5px 12px; font: inherit; font-size: 10px; letter-spacing: 0.15em; color: var(--ink); background: var(--accent); border: 0; cursor: pointer; }
 #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 28vmin, rgba(0, 0, 0, 0.96) 29vmin); }
 
-.overlay { position: fixed; inset: 0; display: flex; align-items: flex-end; padding: 9vh 7vw; background: linear-gradient(90deg, rgba(13, 19, 20, 0.95) 0%, rgba(13, 19, 20, 0.78) 34%, rgba(13, 19, 20, 0.2) 66%, rgba(13, 19, 20, 0.04) 100%), linear-gradient(0deg, rgba(13, 19, 20, 0.6) 0%, transparent 48%); pointer-events: auto; }
+.overlay { position: fixed; inset: 0; display: flex; align-items: flex-end; padding: 9vh 7vw; background: linear-gradient(90deg, rgba(13, 19, 20, 0.95) 0%, rgba(13, 19, 20, 0.78) 34%, rgba(13, 19, 20, 0.2) 66%, rgba(13, 19, 20, 0.04) 100%); pointer-events: auto; }
 #overlay-panel { width: min(580px, 100%); }
 #overlay-eyebrow { margin-bottom: 12px; font-family: var(--font-readout); font-size: 11px; letter-spacing: 0.24em; color: var(--accent); }
 #overlay-title { margin: 0 0 14px; max-width: 12ch; font-size: clamp(54px, 9vw, 112px); line-height: 0.88; font-weight: 600; letter-spacing: -0.045em; color: var(--white); }
 #overlay-copy { margin: 0 0 22px; max-width: 44ch; font-size: 16px; line-height: 1.5; color: var(--salt); }
 #overlay-score { margin: 0 0 18px; font-family: var(--font-readout); font-size: 34px; letter-spacing: 0.12em; color: var(--accent); }
 #play { font: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0.04em; padding: 13px 26px; border: 1px solid var(--accent); border-radius: 3px; background: var(--accent); color: var(--ink); cursor: pointer; }
-#play:hover { background: var(--white); border-color: var(--white); }
-#overlay-keys { margin: 26px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: 12px; color: var(--muted); }
-#overlay-keys li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-#overlay-keys kbd { min-width: 24px; padding: 2px 6px; border: 1px solid var(--hairline); border-radius: 2px; font-family: var(--font-readout); font-size: 10px; color: var(--salt); text-align: center; }
+
 .overlay[data-mode="roundEnd"] #overlay-panel, .overlay[data-mode="matchOver"] #overlay-panel { width: min(720px, 100%); }
 .overlay[data-mode="roundEnd"] #overlay-title, .overlay[data-mode="matchOver"] #overlay-title { max-width: 18ch; margin-bottom: 12px; font-size: clamp(30px, 4.5vw, 58px); line-height: 1.02; }
 

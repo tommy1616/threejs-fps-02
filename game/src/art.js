@@ -77,9 +77,6 @@ export function createTextures(seed) {
 		const ctx = canvas.getContext('2d');
 		ctx.fillStyle = color;
 		ctx.fillRect(0, 0, 512, 160);
-		ctx.strokeStyle = PALETTE.ink;
-		ctx.lineWidth = 12;
-		ctx.strokeRect(8, 8, 496, 144);
 		ctx.fillStyle = PALETTE.ink;
 		ctx.font = 'bold 72px system-ui, sans-serif';
 		ctx.textAlign = 'center';
@@ -118,7 +115,11 @@ function mesh(material, sx, sy, sz, x, y, z, geometry = UNIT) {
 
 export function createProps(scene, materials, textures, props) {
 	for (const prop of props) {
-		if (prop.type === 'barrel') {
+		if (prop.type === 'relay') {
+			scene.add(mesh(materials.steel, 0.9, 0.8, 0.55, prop.x, 0.4, prop.z));
+			scene.add(mesh(materials.steel, 0.08, 1.5, 0.08, prop.x, 1.2, prop.z));
+			scene.add(mesh(materials[prop.color], 0.75, 0.08, 0.58, prop.x, 0.82, prop.z));
+		} else if (prop.type === 'barrel') {
 			scene.add(mesh(materials.rust, 1, 1, 1, prop.x, 0.45, prop.z, BARREL));
 		} else if (prop.type === 'pipe') {
 			const pipe = mesh(materials.rust, 1, prop.len, 1, prop.x, 2.7, prop.z, PIPE);

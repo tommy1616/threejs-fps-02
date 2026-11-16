@@ -128,6 +128,42 @@ function addTracer(state, sx, sy, sz, dx, dy, dz, length, team) {
 	}
 }
 
+function impact(state, x, y, z, nx, ny, nz) {
+	let decal = null;
+	for (let index = 0; index < state.decals.length; index += 1) {
+		if (!state.decals[index].active) {
+			decal = state.decals[index];
+			break;
+		}
+	}
+	if (!decal) {
+		decal = state.decals[state.decalHead % state.decals.length];
+		state.decalHead += 1;
+	}
+	Object.assign(decal, { active: true, x, y, z, nx, ny, nz, ttl: 20, maxTtl: 20 });
+	for (let index = 0; index < 3; index += 1) {
+		let spark = null;
+		for (let slot = 0; slot < state.sparks.length; slot += 1) {
+			if (!state.sparks[slot].active) {
+				spark = state.sparks[slot];
+				break;
+			}
+		}
+		if (!spark) {
+			spark = state.sparks[state.sparkHead % state.sparks.length];
+			state.sparkHead += 1;
+		}
+		Object.assign(spark, {
+			active: true,
+			x: x + (index - 1) * 0.04,
+			y: y + (index - 1) * 0.03,
+			z,
+			ttl: 0.25,
+			maxTtl: 0.25,
+		});
+	}
+}
+
 function spreadTarget(actor, weapon) {
 	const speed = Math.hypot(actor.velocity.x, actor.velocity.z);
 	let multiplier = 1 + weapon.moveMultiplier * Math.min(1, speed / MOVE.walkSpeed);
@@ -203,6 +239,7 @@ export function fireHitscan(state, actor, weapon) {
 		endX = mapHit.x;
 		endY = mapHit.y;
 		endZ = mapHit.z;
+		impact(state, mapHit.x, mapHit.y, mapHit.z, mapHit.normalX, mapHit.normalY, mapHit.normalZ);
 	}
 
 	const startX = actor.position.x + right.x * 0.14 + dir.x * 0.4;

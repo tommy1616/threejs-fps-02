@@ -71,6 +71,8 @@ function clearPools(state) {
 	for (let index = 0; index < state.grenades.length; index += 1) state.grenades[index].active = false;
 	for (let index = 0; index < state.smokes.length; index += 1) state.smokes[index].active = false;
 	for (let index = 0; index < state.blasts.length; index += 1) state.blasts[index].active = false;
+	for (let index = 0; index < state.decals.length; index += 1) state.decals[index].active = false;
+	for (let index = 0; index < state.sparks.length; index += 1) state.sparks[index].active = false;
 	for (let index = 0; index < state.sounds.length; index += 1) state.sounds[index].active = false;
 }
 
@@ -96,7 +98,7 @@ export function startRound(state) {
 	}
 	state.phase = 'freeze';
 	state.match.phaseTime = ROUND.freezeSeconds;
-	state.match.setupTime = 35;
+	state.match.setupTime = 37;
 	state.match.winner = null;
 	state.match.reason = '';
 	state.ui.overlay = 'none';

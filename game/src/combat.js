@@ -55,4 +55,16 @@ export function stepCombat(state, dt) {
 		noise.ttl -= dt;
 		if (noise.ttl <= 0) noise.active = false;
 	}
+	for (let index = 0; index < state.decals.length; index += 1) {
+		const decal = state.decals[index];
+		if (!decal.active) continue;
+		decal.ttl -= dt;
+		if (decal.ttl <= 0) decal.active = false;
+	}
+	for (let index = 0; index < state.sparks.length; index += 1) {
+		const spark = state.sparks[index];
+		if (!spark.active) continue;
+		spark.ttl -= dt;
+		if (spark.ttl <= 0) spark.active = false;
+	}
 }

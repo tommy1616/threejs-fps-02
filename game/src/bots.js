@@ -208,6 +208,7 @@ export function resetBots(state) {
 		ai.prober = bot.team === 'syndicate' && defenderIndex <= 2;
 		ai.nadeTimer = 3 + state.rng() * 6;
 		ai.smoked = false;
+		ai.holdBase = 4 + state.rng() * 2;
 		bot.slot = bot.slots[0] ? 0 : 1;
 	}
 }
@@ -290,7 +291,7 @@ function stepRoute(bot, dt) {
 	if (!node) {
 		if (ai.state === 'patrol') {
 			ai.state = 'hold';
-			ai.holdTimer = 5;
+			ai.holdTimer = ai.holdBase || 5;
 		}
 		return false;
 	}
@@ -301,7 +302,7 @@ function stepRoute(bot, dt) {
 		ai.routeIndex += 1;
 		if (ai.routeIndex >= ai.route.length) {
 			ai.state = ai.state === 'search' ? 'search' : 'hold';
-			if (ai.state === 'hold') ai.holdTimer = 5;
+			if (ai.state === 'hold') ai.holdTimer = ai.holdBase || 5;
 			return false;
 		}
 		return true;

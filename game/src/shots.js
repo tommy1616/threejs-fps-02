@@ -7,7 +7,7 @@ import { stepGrenades, throwGrenade } from './grenades.js';
 import { advance } from './simulation.js';
 
 const MOVE = CONFIG.movement;
-const shotNames = ['start', 'play', 'end', 'plant', 'defuse', 'buy', 'nade'];
+const shotNames = ['start', 'play', 'plant', 'buy'];
 
 function place(actor, x, z, yaw, pitch = 0) {
 	actor.position.set(x, 0, z);
@@ -111,39 +111,6 @@ function plant(state) {
 	team(state, 'syndicate', [[-20.5, -9, -1.6], [-14, -5, -2.2], [-13, -13, -2.8], [-20, -14, -1.4], [-11, -9, -2.1]]);
 }
 
-function defuse(state) {
-	live(state, 9, 4, 4, 74);
-	const player = state.player;
-	player.team = 'syndicate';
-	place(player, -14.9, -9.4, 2, -0.4);
-	Object.assign(player, { health: 76, armor: 40, money: 3900 });
-	primary(player, 'harrow', 14, 45);
-	Object.assign(state.objective, {
-		state: 'planted', site: 'A', attackSite: 'A', carrierId: null,
-		planted: true, timer: 31, plantProgress: 1, defuseProgress: 0.55,
-		defuserId: player.id, hint: 'Defusing relay charge', result: null,
-		x: -16.2, z: -8.8,
-	});
-	team(state, 'syndicate', [[-19, -6, 1.9], [-13.5, -11.5, 0.7], [-20.5, -12, 1.4], [-12, -6.5, 1]]);
-	team(state, 'vanguard', [[-20, -4.5, -2.2], [-12, -8.5, -1.6], [-18, -13.5, -2.6], [-11, -13, -1.9], [-16, -3.5, -3]]);
-}
-
-function nade(state) {
-	live(state, 4, 2, 2, 62);
-	const player = state.player;
-	place(player, -12.5, -5, 0.9, -0.08);
-	primary(player);
-	Object.assign(player, { health: 78, armor: 50, money: 3100 });
-	Object.assign(state.objective, {
-		state: 'planted', planted: true, site: 'A', attackSite: 'A',
-		timer: 28, plantProgress: 1, x: -17, z: -9, hint: '', result: null,
-	});
-	Object.assign(state.smokes[0], { active: true, x: -17, y: 1, z: -9, radius: 4.5, ttl: 12 });
-	Object.assign(state.blasts[0], { active: true, x: -15.5, y: 1, z: -7.5, ttl: 0.3, maxTtl: 0.35 });
-	Object.assign(state.grenades[0], { active: true, kind: 'smoke', x: -13, y: 2.2, z: -7 });
-	player.shake = 0.8;
-}
-
 function buy(state) {
 	state.phase = 'freeze';
 	state.match.phaseTime = CONFIG.round.freezeSeconds;
@@ -161,28 +128,7 @@ function buy(state) {
 	player.money = 4200;
 }
 
-function end(state) {
-	startMatch(state);
-	let elapsed = 0;
-	while (state.phase !== 'roundEnd' && elapsed < 126) {
-		advance(state, CONFIG.fixedDt);
-		elapsed += CONFIG.fixedDt;
-	}
-	state.ui.overlay = 'roundEnd';
-	state.ui.hudVisible = true;
-	state.view.mode = 'player';
-	if (state.match.phaseTime <= 0) state.match.phaseTime = CONFIG.round.roundEndSeconds;
-	const player = state.player;
-	player.alive = true;
-	player.health = Math.max(player.health, 55);
-	primary(player);
-	player.position.set(-11.5, 0, -6.5);
-	player.prevPosition.copy(player.position);
-	player.yaw = player.prevYaw = 1.14;
-	player.pitch = player.prevPitch = -0.04;
-}
-
-const SHOTS = { start, play, end, plant, defuse, buy, nade };
+const SHOTS = { start, play, plant, buy };
 
 function publish(prefix, summary) {
 	document.title = `${prefix} ${JSON.stringify(summary)}`;
@@ -267,22 +213,21 @@ function botsTest(state) {
 	let deaths = 0;
 	let planted = false;
 	let site = null;
-	const loadout = (teamName) => {
-		const counts = {};
-		for (let index = 0; index < state.actors.length; index += 1) {
-			const actor = state.actors[index];
-			if (actor.team !== teamName) continue;
-			const gun = actor.slots[0] || actor.slots[1];
-			counts[gun.name] = (counts[gun.name] || 0) + 1;
-		}
-		return Object.entries(counts).map(([name, count]) => `${count}x ${name}`).join(', ');
-	};
-	let gear = { v: loadout('vanguard'), s: loadout('syndicate') };
+	let contact = null;
 	while (rounds.length < 6 && elapsed < 1200) {
 		const before = state.phase;
 		if (state.phase === 'live') liveTime += CONFIG.fixedDt;
 		advance(state, CONFIG.fixedDt);
 		elapsed += CONFIG.fixedDt;
+		if (contact === null && state.phase === 'live') {
+			for (let index = 0; index < state.actors.length; index += 1) {
+				const actor = state.actors[index];
+				if (!actor.alive || actor.health < 100) {
+					contact = liveTime;
+					break;
+				}
+			}
+		}
 		if (['planted', 'defused', 'detonated'].includes(state.objective.state)) {
 			planted = true;
 			site = state.objective.site || site;
@@ -299,7 +244,7 @@ function botsTest(state) {
 			}
 			planted = false;
 			site = null;
-			gear = { v: loadout('vanguard'), s: loadout('syndicate') };
+			contact = null;
 		}
 		if (state.phase === 'roundEnd' && before !== 'roundEnd') {
 			let total = 0;
@@ -317,12 +262,11 @@ function botsTest(state) {
 				winner: state.match.winner,
 				reason: state.match.reason,
 				liveTime: Number(liveTime.toFixed(1)),
+				contact: contact === null ? null : Number(contact.toFixed(1)),
 				kills: total - deaths,
 				alive: `${vAlive}-${sAlive}`,
 				planted,
 				site,
-				v: gear.v,
-				s: gear.s,
 			});
 			deaths = total;
 			liveTime = 0;
