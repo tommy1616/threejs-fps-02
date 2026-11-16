@@ -1,15 +1,20 @@
-// The look plan, in one place. Six values and one accent hue; the lighting makes every
-// shade the game needs, so no other colour appears in the code. The same six names are
-// the CSS custom properties in index.html.
 export const PALETTE = {
-  canvas: '#14161a',
-  surface: '#1e2228',
-  hairline: '#2c323a',
-  ink: '#e9e6df',
-  muted: '#98a0a8',
-  accent: '#f0a830',
+  sky: '#a8bdc2',
+  fog: '#b9c8c4',
+  salt: '#ded9c7',
+  sand: '#b9ac90',
+  steel: '#53666a',
+  rust: '#8f5238',
+  crate: '#a97f4e',
+  ink: '#222b2d',
+  muted: '#78878a',
+  accent: '#e6a43c',
+  vanguard: '#3f86a8',
+  syndicate: '#b4553a',
+  white: '#f2eee2',
+  hit: '#efd277',
 };
 
 export function shade(name) {
-  return PALETTE[name];
+  return PALETTE[name] ?? PALETTE.white;
 }

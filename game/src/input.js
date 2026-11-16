@@ -1,49 +1,149 @@
-// Keyboard and mouse, and the pointer lock that turns the mouse into look. Plain browser
-// APIs only: the game asks the canvas for pointer lock and reads movementX/Y while it holds it.
-export function createInput(canvas, onLockChange) {
+export function createInput(canvas, onLockChange = () => {}) {
   const keys = new Set();
-  const state = { keys, locked: false, firing: false, lookX: 0, lookY: 0 };
+  const pending = {
+    lookX: 0,
+    lookY: 0,
+    jump: false,
+    reload: false,
+    buy: false,
+    slot: 0,
+    firePressed: false,
+  };
+  const snapshot = {
+    forward: 0,
+    strafe: 0,
+    jumpPressed: false,
+    crouch: false,
+    walk: false,
+    reloadPressed: false,
+    buyPressed: false,
+    slotPressed: 0,
+    fire: false,
+    firePressed: false,
+    lookDX: 0,
+    lookDY: 0,
+    locked: false,
+  };
+  let firing = false;
+  let locked = false;
 
-  function setKey(event, down) {
-    if (down) keys.add(event.code);
-    else keys.delete(event.code);
-    if (event.code === 'Space') event.preventDefault();
+  function queueKey(code) {
+    if (code === 'Space') pending.jump = true;
+    else if (code === 'KeyR') pending.reload = true;
+    else if (code === 'KeyB') pending.buy = true;
+    else if (code === 'Digit1') pending.slot = 1;
+    else if (code === 'Digit2') pending.slot = 2;
+    else if (code === 'Digit3') pending.slot = 3;
   }
 
-  window.addEventListener('keydown', (event) => setKey(event, true));
-  window.addEventListener('keyup', (event) => setKey(event, false));
-  window.addEventListener('blur', () => keys.clear());
-  window.addEventListener('mousemove', (event) => {
-    if (!state.locked) return;
-    state.lookX += event.movementX;
-    state.lookY += event.movementY;
-  });
-  window.addEventListener('mousedown', (event) => {
-    if (state.locked && event.button === 0) state.firing = true;
-  });
-  window.addEventListener('mouseup', (event) => {
-    if (event.button === 0) state.firing = false;
-  });
-  document.addEventListener('pointerlockchange', () => {
-    state.locked = document.pointerLockElement === canvas;
-    if (!state.locked) {
+  function onKeyDown(event) {
+    if (event.code === 'Space') event.preventDefault();
+    keys.add(event.code);
+    if (!event.repeat) queueKey(event.code);
+  }
+
+  function onKeyUp(event) {
+    keys.delete(event.code);
+  }
+
+  function onBlur() {
+    keys.clear();
+    firing = false;
+  }
+
+  function onMouseMove(event) {
+    if (!locked) return;
+    pending.lookX += event.movementX;
+    pending.lookY += event.movementY;
+  }
+
+  function onMouseDown(event) {
+    if (!locked || event.button !== 0) return;
+    firing = true;
+    pending.firePressed = true;
+  }
+
+  function onMouseUp(event) {
+    if (event.button === 0) firing = false;
+  }
+
+  function onContextMenu(event) {
+    event.preventDefault();
+  }
+
+  function onCanvasClick() {
+    if (!locked) requestLock();
+  }
+
+  function onPointerLockChange() {
+    locked = document.pointerLockElement === canvas;
+    if (!locked) {
       keys.clear();
-      state.firing = false;
+      firing = false;
+      pending.lookX = 0;
+      pending.lookY = 0;
     }
-    onLockChange(state.locked);
-  });
+    onLockChange(locked);
+  }
+
+  function requestLock() {
+    const request = canvas.requestPointerLock?.();
+    if (request && typeof request.catch === 'function') request.catch(() => {});
+  }
+
+  function takeSnapshot() {
+    snapshot.forward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+    snapshot.strafe = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+    snapshot.crouch = keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC');
+    snapshot.walk = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    snapshot.jumpPressed = pending.jump;
+    snapshot.reloadPressed = pending.reload;
+    snapshot.buyPressed = pending.buy;
+    snapshot.slotPressed = pending.slot;
+    snapshot.fire = firing;
+    snapshot.firePressed = pending.firePressed;
+    snapshot.lookDX = pending.lookX;
+    snapshot.lookDY = pending.lookY;
+    snapshot.locked = locked;
+    pending.jump = false;
+    pending.reload = false;
+    pending.buy = false;
+    pending.slot = 0;
+    pending.firePressed = false;
+    pending.lookX = 0;
+    pending.lookY = 0;
+    return snapshot;
+  }
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('click', onCanvasClick);
+  canvas.addEventListener('contextmenu', onContextMenu);
+  document.addEventListener('pointerlockchange', onPointerLockChange);
 
   return {
-    state,
-    requestLock() {
-      canvas.requestPointerLock();
+    takeSnapshot,
+    requestLock,
+    get locked() {
+      return locked;
     },
-    takeLook() {
-      const x = state.lookX;
-      const y = state.lookY;
-      state.lookX = 0;
-      state.lookY = 0;
-      return { x, y };
+    get keys() {
+      return keys;
+    },
+    dispose() {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('click', onCanvasClick);
+      canvas.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
     },
   };
 }
