@@ -229,7 +229,7 @@ export function createHud() {
    for (let index = 0; index < state.actors.length; index += 1) {
     if (state.actors[index].id === charge.carrierId) { holder = state.actors[index]; break; }
    }
-   carrierText = holder && holder.isPlayer ? 'CHARGE · YOU' : `CHARGE · ${holder ? holder.name : 'UNKNOWN'}`;
+   carrierText = holder && holder.isPlayer ? 'YOU CARRY THE RELAY CHARGE · PLANT AT A OR B' : `CHARGE · ${holder ? holder.name : 'UNKNOWN'}`;
   } else if (charge.state === 'ground') {
    carrierText = 'CHARGE · DROPPED';
   }

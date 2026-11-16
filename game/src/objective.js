@@ -64,9 +64,13 @@ export function setupCharge(state) {
  const attackers = state.actors.filter((actor) => actor.team === 'vanguard' && actor.alive);
  if (attackers.length === 0) return;
  const player = state.player;
- const carrier = !state.testMode && player.team === 'vanguard' && player.alive && state.rng() < 0.5
+ const forced = state.forceCarrier;
+ const carrier = forced === 'player' && player.team === 'vanguard' && player.alive
   ? player
-  : attackers[Math.floor(state.rng() * attackers.length)];
+  : forced === 'bot' ? attackers.find((actor) => !actor.isPlayer) || attackers[0]
+   : !state.testMode && player.team === 'vanguard' && player.alive && state.rng() < 0.5
+    ? player
+    : attackers[Math.floor(state.rng() * attackers.length)];
  objective.carrierId = carrier.id;
  objective.x = carrier.position.x;
  objective.z = carrier.position.z;

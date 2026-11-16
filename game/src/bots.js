@@ -101,6 +101,9 @@ function nearestEnemy(state, bot) {
 
 function shouldHunt(state, bot) {
  const enemyTeam = bot.team === 'vanguard' ? 'syndicate' : 'vanguard';
+ if (bot.team === 'syndicate' && !state.objective.planted) {
+  return state.match.phaseTime < 40 && bot.ai.prober;
+ }
  if (countAlive(state, bot.team) > countAlive(state, enemyTeam)) return true;
  if (state.match.phaseTime < 45) return true;
  return false;
@@ -198,6 +201,7 @@ export function resetBots(state) {
   ai.stuckZ = bot.spawn.z;
   ai.marksman = !marks[bot.team];
   marks[bot.team] = true;
+  ai.prober = bot.team === 'syndicate' && defenderIndex <= 2;
   ai.nadeTimer = 3 + state.rng() * 6;
   ai.smoked = false;
   ai.gather = 0;

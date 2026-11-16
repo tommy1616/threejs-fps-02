@@ -20,8 +20,11 @@ const requestedShot = params.get('shot');
 const shot = ['start', 'play', 'end', 'plant', 'defuse', 'buy', 'nade'].includes(requestedShot) ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const testMode = params.get('test') === '1';
+const idleMode = params.get('idle') === '1';
+const carrierParam = params.get('carrier');
 
 const state = createGameState(seed);
+state.forceCarrier = carrierParam === '1' ? 'player' : carrierParam === '0' ? 'bot' : null;
 const hud = createHud();
 let frozen = Boolean(shot);
 let started = false;
@@ -272,6 +275,50 @@ function setupBuyShot() {
  player.money = 4200;
 }
 
+function setupIdleTest() {
+ startMatch(state);
+ const carrier = state.objective.carrierId === 'p0';
+ let elapsed = 0;
+ let live = 0;
+ let contact = null;
+ while (live < 70 && elapsed < 200 && state.phase !== 'roundEnd' && state.phase !== 'matchOver') {
+  const wasLive = state.phase === 'live';
+  advanceWorld(state, CONFIG.fixedDt);
+  elapsed += CONFIG.fixedDt;
+  if (wasLive) live += CONFIG.fixedDt;
+  if (contact === null) {
+   for (let index = 0; index < state.actors.length; index += 1) {
+    const actor = state.actors[index];
+    if (!actor.alive || actor.health < 100) { contact = live; break; }
+   }
+  }
+ }
+ let kills = 0;
+ let vanguardAlive = 0;
+ let syndicateAlive = 0;
+ for (let index = 0; index < state.actors.length; index += 1) {
+  const actor = state.actors[index];
+  kills += actor.deaths;
+  if (!actor.alive) continue;
+  if (actor.team === 'vanguard') vanguardAlive += 1;
+  else syndicateAlive += 1;
+ }
+ const summary = {
+  carrier,
+  live: Number(live.toFixed(1)),
+  contact: contact === null ? null : Number(contact.toFixed(1)),
+  kills,
+  objective: state.objective.state,
+  alive: `${vanguardAlive}-${syndicateAlive}`,
+ };
+ document.title = `IDLE ${JSON.stringify(summary)}`;
+ document.body.dataset.summary = JSON.stringify(summary);
+ frozen = true;
+ state.ui.overlay = 'none';
+ state.ui.hudVisible = true;
+ state.view.mode = 'player';
+}
+
 function setupTest() {
  state.testMode = true;
  state.player.isPlayer = false;
@@ -384,6 +431,7 @@ else if (shot === 'plant') setupPlantShot();
 else if (shot === 'defuse') setupDefuseShot();
 else if (shot === 'buy') setupBuyShot();
 else if (shot === 'nade') setupNadeShot();
+if (idleMode) setupIdleTest();
 if (testMode) setupTest();
 
 const world = createWorld(document.getElementById('game'), state);
