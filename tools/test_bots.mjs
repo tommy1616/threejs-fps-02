@@ -46,6 +46,7 @@ try {
   for (const round of rounds) {
     const site = round.planted ? `planted ${round.site}` : 'no plant';
     console.log(`round ${round.round}: ${round.winner} — ${round.reason} (live ${round.liveTime}s, kills ${round.kills}, alive ${round.alive}, ${site})`);
+    console.log(`  V: ${round.v} | S: ${round.s}`);
   }
   console.log(`moved=${summary.moved} autoNext=${summary.autoNext} respawnFull=${summary.respawnFull}`);
   if (rounds.length < 4) {

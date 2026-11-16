@@ -1,10 +1,11 @@
 import { CONFIG } from './config.js';
 import { resetBots } from './bots.js';
 import { setupCharge } from './objective.js';
+import { createWeapon, DEFAULT_WEAPON } from './weapons.js';
+import { addMoney, botBuy, ECONOMY } from './economy.js';
 
 const MOVE = CONFIG.movement;
 const ROUND = CONFIG.round;
-const ECONOMY = CONFIG.economy;
 
 function aliveCount(state, team) {
   let count = 0;
@@ -30,17 +31,26 @@ function resetActor(state, actor) {
   actor.onGround = true;
   actor.alive = true;
   actor.health = 100;
-  actor.armor = actor.isPlayer ? 0 : 50;
   actor.spread = 0;
+  actor.scoped = false;
   actor.recoilPitch = 0;
   actor.recoilYaw = 0;
-  actor.lastAttackerId = null;
-  for (let index = 0; index < actor.slots.length; index += 1) {
+  if (!survived) {
+    actor.slots[0] = null;
+    actor.slots[1] = createWeapon(DEFAULT_WEAPON);
+    actor.grenades.frag = 0;
+    actor.grenades.smoke = 0;
+    actor.armor = 0;
+    actor.helmet = false;
+    actor.kit = false;
+  }
+  actor.slot = actor.slots[0] ? 0 : 1;
+  actor.lastSlot = actor.slot;
+  for (let index = 0; index < 2; index += 1) {
     const weapon = actor.slots[index];
-    if (!survived) {
-      weapon.mag = weapon.magazine;
-      weapon.reserve = weapon.reserveMax;
-    }
+    if (!weapon) continue;
+    weapon.mag = weapon.magazine;
+    weapon.reserve = weapon.reserveMax;
     weapon.reloadLeft = 0;
     weapon.fireCooldown = 0;
     weapon.emptyClick = 0;
@@ -90,6 +100,7 @@ export function startRound(state) {
   clearPools(state);
   setupCharge(state);
   resetBots(state);
+  botBuy(state);
 }
 
 export function startMatch(state) {
@@ -104,10 +115,8 @@ export function startMatch(state) {
   state.match.reason = '';
   state.match.lossStreak.vanguard = 1;
   state.match.lossStreak.syndicate = 1;
-  state.money.vanguard = ECONOMY.startMoney;
-  state.money.syndicate = ECONOMY.startMoney;
   for (let index = 0; index < state.actors.length; index += 1) {
-    state.actors[index].money = ECONOMY.startMoney;
+    state.actors[index].money = ECONOMY.start;
     state.actors[index].kills = 0;
     state.actors[index].deaths = 0;
     state.actors[index].slot = 0;
@@ -115,24 +124,19 @@ export function startMatch(state) {
   startRound(state);
 }
 
-function awardMoney(state, winner) {
+function awardMoney(state, winner, objectiveWin) {
   const loser = winner === 'vanguard' ? 'syndicate' : 'vanguard';
-  state.match.lossStreak[loser] = Math.min(4, state.match.lossStreak[loser] + 1);
+  const loss = ECONOMY.losses[Math.min(ECONOMY.losses.length - 1, state.match.lossStreak[loser] - 1)];
+  state.match.lossStreak[loser] = Math.min(5, state.match.lossStreak[loser] + 1);
   state.match.lossStreak[winner] = 1;
-  const lossReward = Math.min(
-    ECONOMY.lossMax,
-    ECONOMY.lossBase + (state.match.lossStreak[loser] - 1) * ECONOMY.lossStep,
-  );
-  state.money[winner] = Math.min(ECONOMY.maxMoney, state.money[winner] + ECONOMY.teamWinReward);
-  state.money[loser] = Math.min(ECONOMY.maxMoney, state.money[loser] + lossReward);
+  const win = objectiveWin ? ECONOMY.objectiveWin : ECONOMY.win;
   for (let index = 0; index < state.actors.length; index += 1) {
     const actor = state.actors[index];
-    const reward = actor.team === winner ? ECONOMY.teamWinReward : lossReward;
-    actor.money = Math.min(ECONOMY.maxMoney, actor.money + reward);
+    addMoney(actor, actor.team === winner ? win : loss);
   }
 }
 
-export function endRound(state, winner, reason) {
+export function endRound(state, winner, reason, objectiveWin = false) {
   if (state.phase !== 'live') return;
   state.phase = 'roundEnd';
   state.match.phaseTime = ROUND.roundEndSeconds;
@@ -140,9 +144,15 @@ export function endRound(state, winner, reason) {
   state.match.reason = reason;
   state.match.score[winner] += 1;
   state.match.roundsPlayed += 1;
+  state.player.scoped = false;
   state.ui.overlay = 'roundEnd';
   state.ui.hudVisible = true;
-  awardMoney(state, winner);
+  awardMoney(state, winner, objectiveWin);
+  if (state.objective.wasPlanted) {
+    for (let index = 0; index < state.actors.length; index += 1) {
+      if (state.actors[index].team === 'vanguard') addMoney(state.actors[index], ECONOMY.plant);
+    }
+  }
 }
 
 export function restartMatch(state) {
@@ -166,7 +176,7 @@ export function stepRounds(state, dt) {
     if (objective.result) {
       const result = objective.result;
       objective.result = null;
-      endRound(state, result.winner, result.reason);
+      endRound(state, result.winner, result.reason, true);
       return;
     }
 
@@ -174,10 +184,7 @@ export function stepRounds(state, dt) {
     const vanguard = aliveCount(state, 'vanguard');
     const syndicate = aliveCount(state, 'syndicate');
 
-    if (objective.planted) {
-      if (syndicate === 0) endRound(state, 'vanguard', 'Syndicate eliminated after the charge was planted.');
-      return;
-    }
+    if (objective.planted) return;
     if (syndicate === 0) endRound(state, 'vanguard', 'Vanguard eliminated the Syndicate.');
     else if (vanguard === 0) endRound(state, 'syndicate', 'Syndicate eliminated Vanguard before the charge.');
     else if (state.match.phaseTime === 0) endRound(state, 'syndicate', 'Time expired — Syndicate hold the depot.');

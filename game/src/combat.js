@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js';
 import { dropCharge } from './objective.js';
+import { addMoney } from './economy.js';
 
 const FEED_SECONDS = 6;
 
@@ -18,16 +18,15 @@ export function pushKillFeed(state, killer, victim, weapon, headshot) {
   feed.head = (feed.head + 1) % feed.items.length;
 }
 
-export function applyDamage(state, victim, amount, attacker, weaponName, part) {
+export function applyDamage(state, victim, amount, attacker, weapon, part) {
   if (!victim.alive || amount <= 0) return false;
-  let damage = amount;
+  let damage = part === 'head' && victim.helmet ? amount * 0.55 : amount;
   if (victim.armor > 0) {
     const absorbed = Math.min(victim.armor, damage * 0.5);
     victim.armor -= absorbed;
     damage -= absorbed;
   }
   victim.health -= damage;
-  victim.lastAttackerId = attacker ? attacker.id : null;
 
   if (victim.health > 0) return false;
 
@@ -38,9 +37,9 @@ export function applyDamage(state, victim, amount, attacker, weaponName, part) {
   dropCharge(state, victim);
   if (attacker && attacker !== victim) {
     attacker.kills += 1;
-    attacker.money = Math.min(CONFIG.economy.maxMoney, attacker.money + CONFIG.economy.killReward);
+    addMoney(attacker, weapon ? weapon.reward : 300);
   }
-  pushKillFeed(state, attacker, victim, weaponName, part === 'head');
+  pushKillFeed(state, attacker, victim, weapon ? weapon.name : '', part === 'head');
   return true;
 }
 

@@ -10,10 +10,12 @@ import { pushKillFeed, stepCombat } from './combat.js';
 import { stepBots } from './bots.js';
 import { restartMatch, startMatch, stepRounds } from './rounds.js';
 import { stepObjective } from './objective.js';
+import { buyItem, canBuy } from './economy.js';
+import { createWeapon, SHOP, WEAPONS } from './weapons.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedShot = params.get('shot');
-const shot = ['start', 'play', 'end', 'plant', 'defuse'].includes(requestedShot) ? requestedShot : null;
+const shot = ['start', 'play', 'end', 'plant', 'defuse', 'buy'].includes(requestedShot) ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const testMode = params.get('test') === '1';
 
@@ -39,6 +41,11 @@ function placeActor(actor, x, z, yaw, pitch = 0) {
   actor.onGround = true;
   actor.alive = true;
   actor.health = 100;
+}
+
+function givePrimary(player, id = 'harrow') {
+  player.slots[0] = createWeapon(WEAPONS.find((weapon) => weapon.id === id));
+  player.slot = 0;
 }
 
 function setTracer(index, x, y, z, tx, ty, tz) {
@@ -69,15 +76,13 @@ function setupPlayShot() {
   state.match.phaseTime = 83;
   state.match.score.vanguard = 2;
   state.match.score.syndicate = 2;
-  state.money.vanguard = 2600;
-  state.money.syndicate = 3150;
 
   const player = state.player;
   placeActor(player, 0, 14.2, 0, -0.015);
   player.health = 84;
   player.armor = 62;
   player.money = 2600;
-  player.slot = 0;
+  givePrimary(player);
   player.spread = 0.006;
   player.slots[0].mag = 21;
   player.slots[0].reserve = 63;
@@ -160,6 +165,7 @@ function setupEndShot() {
   const player = state.player;
   player.alive = true;
   player.health = Math.max(player.health, 55);
+  givePrimary(player);
   player.position.set(-11.5, 0, -6.5);
   player.prevPosition.copy(player.position);
   player.yaw = 1.14;
@@ -194,6 +200,7 @@ function setupPlantShot() {
   player.health = 92;
   player.armor = 35;
   player.money = 2100;
+  givePrimary(player);
   player.slots[0].mag = 18;
   player.slots[0].reserve = 60;
 
@@ -225,6 +232,7 @@ function setupDefuseShot() {
   player.health = 76;
   player.armor = 40;
   player.money = 3900;
+  givePrimary(player);
   player.slots[0].mag = 14;
   player.slots[0].reserve = 45;
 
@@ -237,6 +245,23 @@ function setupDefuseShot() {
 
   placeTeam(state, 'syndicate', [[-19, -6, 1.9], [-13.5, -11.5, 0.7], [-20.5, -12, 1.4], [-12, -6.5, 1.0]]);
   placeTeam(state, 'vanguard', [[-20, -4.5, -2.2], [-12, -8.5, -1.6], [-18, -13.5, -2.6], [-11, -13, -1.9], [-16, -3.5, -3.0]]);
+}
+
+function setupBuyShot() {
+  state.phase = 'freeze';
+  state.match.phaseTime = CONFIG.round.freezeSeconds;
+  state.match.round = 3;
+  state.match.score.vanguard = 1;
+  state.match.score.syndicate = 1;
+  state.view.mode = 'player';
+  state.ui.hudVisible = true;
+  state.ui.overlay = 'none';
+  state.ui.buyOpen = true;
+  state.ui.message = '';
+  state.ui.messageTime = 0;
+  const player = state.player;
+  placeActor(player, player.spawn.x, player.spawn.z, player.spawn.yaw);
+  player.money = 4200;
 }
 
 function setupTest() {
@@ -253,6 +278,17 @@ function setupTest() {
   let deathsMark = 0;
   let planted = false;
   let plantSite = null;
+  const loadout = (team) => {
+    const counts = {};
+    for (let index = 0; index < state.actors.length; index += 1) {
+      const actor = state.actors[index];
+      if (actor.team !== team) continue;
+      const gun = actor.slots[0] || actor.slots[1];
+      counts[gun.name] = (counts[gun.name] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, count]) => `${count}x ${name}`).join(', ');
+  };
+  let gear = { v: loadout('vanguard'), s: loadout('syndicate') };
 
   while (rounds.length < 4 && elapsed < 900) {
     const previousPhase = state.phase;
@@ -278,6 +314,7 @@ function setupTest() {
       }
       planted = false;
       plantSite = null;
+      gear = { v: loadout('vanguard'), s: loadout('syndicate') };
     }
 
     if (state.phase === 'roundEnd' && previousPhase !== 'roundEnd') {
@@ -300,6 +337,8 @@ function setupTest() {
         alive: `${vanguardAlive}-${syndicateAlive}`,
         planted,
         site: plantSite,
+        v: gear.v,
+        s: gear.s,
       });
       deathsMark = totalDeaths;
       liveElapsed = 0;
@@ -335,6 +374,7 @@ else if (shot === 'end') setupEndShot();
 else if (shot === 'start') setupStartShot();
 else if (shot === 'plant') setupPlantShot();
 else if (shot === 'defuse') setupDefuseShot();
+else if (shot === 'buy') setupBuyShot();
 if (testMode) setupTest();
 
 const world = createWorld(document.getElementById('game'), state);
@@ -349,6 +389,19 @@ window.__game = Object.freeze({
   get frozen() { return frozen; },
 });
 
+function setBuyOpen(open) {
+  if (shot || !input) return;
+  if (open) {
+    if (!canBuy(state, state.player)) return;
+    state.ui.buyOpen = true;
+    state.player.scoped = false;
+    if (document.pointerLockElement) document.exitPointerLock();
+  } else {
+    state.ui.buyOpen = false;
+    if (started) input.requestLock();
+  }
+}
+
 function onLockChange(locked) {
   if (shot) return;
   if (locked) {
@@ -360,7 +413,7 @@ function onLockChange(locked) {
     state.ui.hudVisible = true;
     state.view.mode = 'player';
     state.ui.buyOpen = false;
-  } else if (started) {
+  } else if (started && !state.ui.buyOpen) {
     state.ui.overlay = 'pause';
   }
 }
@@ -370,17 +423,33 @@ hud.onDeploy(() => {
   if (state.phase === 'matchOver') restartMatch(state);
   input.requestLock();
 });
+hud.onBuy((id) => {
+  if (state.ui.buyOpen) buyItem(state, state.player, id);
+});
+hud.onBuyClose(() => setBuyOpen(false));
+hud.onBuyButton(() => setBuyOpen(true));
 
 function beginFrame() {
   if (shot) return;
   snapshot = input.takeSnapshot();
-  if (snapshot.locked && state.ui.overlay === 'none' && state.view.mode === 'player') {
+  if (state.ui.buyOpen) {
+    if (!canBuy(state, state.player)) {
+      setBuyOpen(false);
+    } else if (snapshot.slotPressed > 0) {
+      const item = SHOP[snapshot.slotPressed - 1];
+      if (item) buyItem(state, state.player, item.id);
+    }
+    snapshot.slotPressed = 0;
+    snapshot.firePressed = false;
+  }
+  if (snapshot.buyPressed) {
+    if (state.ui.buyOpen) setBuyOpen(false);
+    else setBuyOpen(true);
+  }
+  if (!state.ui.buyOpen && snapshot.locked && state.ui.overlay === 'none' && state.view.mode === 'player') {
     if (snapshot.lookDX !== 0 || snapshot.lookDY !== 0) {
       applyLook(state.player, snapshot.lookDX, snapshot.lookDY);
     }
-    if (snapshot.buyPressed) state.ui.buyOpen = !state.ui.buyOpen;
-  } else {
-    state.ui.buyOpen = false;
   }
   if (snapshot.enterPressed && state.phase === 'matchOver') restartMatch(state);
   snapshot.enterPressed = false;
@@ -403,12 +472,12 @@ function simulate(state, dt) {
     actor.prevPitch = actor.pitch;
   }
 
-  if (state.phase === 'live') {
-    if (snapshot) {
+  if (state.phase === 'live' || state.phase === 'freeze') {
+    if (snapshot && !state.ui.buyOpen) {
       stepPlayer(state, snapshot, dt);
-      stepWeapons(state, snapshot, dt);
+      if (state.phase === 'live') stepWeapons(state, snapshot, dt);
     }
-    stepBots(state, dt);
+    if (state.phase === 'live') stepBots(state, dt);
   }
   stepCombat(state, dt);
   stepObjective(state, snapshot, dt);

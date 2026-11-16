@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { MAP } from './map.js';
 import { mulberry32, normalizeSeed } from './rng.js';
-import { WEAPONS } from './weapons.js';
+import { createWeapon, DEFAULT_WEAPON } from './weapons.js';
+import { ECONOMY } from './economy.js';
 
 const VANGUARD_NAMES = ['Brass', 'Halyard', 'Juno', 'Flint'];
 const SYNDICATE_NAMES = ['Crow', 'Vesper', 'Moss', 'Dahl', 'Rook'];
@@ -20,18 +21,13 @@ function poseToward(px, py, pz, tx, ty, tz) {
   };
 }
 
-function makeWeapons() {
-  return WEAPONS.map((def) => ({
-    ...def,
-    mag: def.magazine,
-    reserve: def.reserve,
-    reserveMax: def.reserve,
-    reloadLeft: 0,
-    fireCooldown: 0,
-    emptyClick: 0,
-    kick: 0,
-    muzzleFlash: 0,
-  }));
+function makeSlots() {
+  return [
+    null,
+    createWeapon(DEFAULT_WEAPON),
+    { kind: 'grenade', name: 'Grenades', mag: 0, reserve: 0 },
+    { kind: 'charge', name: 'Relay Charge', mag: 0, reserve: 0 },
+  ];
 }
 
 function createActor(id, name, team, isPlayer, spawn, role) {
@@ -55,17 +51,21 @@ function createActor(id, name, team, isPlayer, spawn, role) {
     crouching: false,
     onGround: true,
     health: 100,
-    armor: isPlayer ? 0 : 50,
+    armor: 0,
+    helmet: false,
+    kit: false,
+    grenades: { frag: 0, smoke: 0 },
     alive: true,
-    money: CONFIG.economy.startMoney,
+    money: ECONOMY.start,
     kills: 0,
     deaths: 0,
-    slots: makeWeapons(),
-    slot: 0,
+    slots: makeSlots(),
+    slot: 1,
+    lastSlot: 1,
     spread: 0,
+    scoped: false,
     recoilPitch: 0,
     recoilYaw: 0,
-    lastAttackerId: null,
     ai: {
       state: 'patrol',
       route: [],
@@ -81,6 +81,7 @@ function createActor(id, name, team, isPlayer, spawn, role) {
       lastSeenX: spawn.x,
       lastSeenZ: spawn.z,
       strafe: 1,
+      marksman: false,
     },
   };
 }
@@ -202,10 +203,6 @@ export function createGameState(seed = 1) {
       swappedBotId: null,
     },
     testMode: false,
-    money: {
-      vanguard: CONFIG.economy.startMoney,
-      syndicate: CONFIG.economy.startMoney,
-    },
     objective: {
       state: 'idle',
       site: null,
@@ -214,17 +211,15 @@ export function createGameState(seed = 1) {
       planterId: null,
       defuserId: null,
       planted: false,
+      wasPlanted: false,
       timer: 0,
       plantProgress: 0,
       defuseProgress: 0,
       hint: '',
       result: null,
-      kit: false,
       x: 0,
       z: 0,
     },
-    sites: MAP.sites,
-    callouts: MAP.callouts,
     view: {
       mode: 'menu',
       menuPose: {
@@ -245,12 +240,6 @@ export function createGameState(seed = 1) {
     impacts: createImpacts(),
     noises: createNoises(),
     killFeed: createKillFeed(),
-    events: [],
-    stats: {
-      shotsFired: 0,
-      shotsHit: 0,
-      botsAlive: 9,
-    },
   };
 }
 

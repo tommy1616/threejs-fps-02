@@ -126,13 +126,18 @@ export function createViewmodels(camera, scene, state) {
     const player = state.player;
     const active = state.view.mode === 'player' && player.alive;
     const speed = Math.hypot(player.velocity.x, player.velocity.z);
+    const activeWeapon = player.slots[player.slot];
 
     for (let index = 0; index < views.length; index += 1) {
       const view = views[index];
-      const weapon = player.slots[index];
-      const visible = active && player.slot === index;
+      const weapon = activeWeapon;
+      const visible = active && !player.scoped && weapon && weapon.magazine && weapon.id === view.weapon.id;
       view.group.visible = visible;
-      if (!visible) continue;
+      if (!visible) {
+        view.flash.flash.visible = false;
+        view.flash.light.intensity = 0;
+        continue;
+      }
 
       const bob = Math.sin(state.time * 9.5) * Math.min(speed, 6) * 0.0018;
       const sway = Math.cos(state.time * 4.7) * Math.min(speed, 6) * 0.0009;

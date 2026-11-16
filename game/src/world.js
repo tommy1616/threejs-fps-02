@@ -216,6 +216,10 @@ export function createWorld(container, state) {
       const pose = state.view.menuPose;
       camera.position.copy(pose.position);
       camera.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+      if (camera.fov !== CONFIG.view.fov) {
+        camera.fov = CONFIG.view.fov;
+        camera.updateProjectionMatrix();
+      }
       return;
     }
     camera.position.set(
@@ -231,6 +235,11 @@ export function createWorld(container, state) {
       0,
       'YXZ',
     );
+    const targetFov = player.scoped ? 22 : CONFIG.view.fov;
+    if (Math.abs(camera.fov - targetFov) > 0.05) {
+      camera.fov += (targetFov - camera.fov) * 0.4;
+      camera.updateProjectionMatrix();
+    }
   }
 
   function render(state, alpha) {

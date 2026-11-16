@@ -125,50 +125,23 @@ const SITES = Object.freeze({
   }),
 });
 
-const CALLOUTS = Object.freeze([
-  Object.freeze({ name: 'Long A', x: -21, z: 6 }),
-  Object.freeze({ name: 'Long B', x: 21, z: 6 }),
-  Object.freeze({ name: 'Mid', x: 0, z: 4 }),
-  Object.freeze({ name: 'Salt Silo', x: 0, z: 0 }),
-  Object.freeze({ name: 'A Short', x: -7, z: -8 }),
-  Object.freeze({ name: 'B Short', x: 7, z: -8 }),
-  Object.freeze({ name: 'West Yard', x: -10, z: 8 }),
-  Object.freeze({ name: 'East Yard', x: 10, z: 8 }),
-  Object.freeze({ name: 'Vanguard Spawn', x: 0, z: -20 }),
-  Object.freeze({ name: 'Syndicate Spawn', x: 0, z: 20 }),
-]);
-
+const wp = (id, x, z, links) => Object.freeze({ id, x, z, links: Object.freeze(links) });
 const WAYPOINTS = Object.freeze([
-  Object.freeze({ id: 'as', x: 0, z: 19, links: Object.freeze(['asW', 'asE', 'mS']) }),
-  Object.freeze({ id: 'asW', x: -20.5, z: 19, links: Object.freeze(['as', 'aw']) }),
-  Object.freeze({ id: 'asE', x: 20.5, z: 19, links: Object.freeze(['as', 'ae']) }),
-  Object.freeze({ id: 'aw', x: -20.5, z: 15, links: Object.freeze(['asW', 'lA1']) }),
-  Object.freeze({ id: 'ae', x: 20.5, z: 15, links: Object.freeze(['asE', 'lB1']) }),
-  Object.freeze({ id: 'mS', x: 0, z: 13, links: Object.freeze(['as', 'mC']) }),
-  Object.freeze({ id: 'mC', x: 0, z: 7, links: Object.freeze(['mS', 'mW', 'mE']) }),
-  Object.freeze({ id: 'mW', x: -3, z: 4, links: Object.freeze(['mC', 'mSideW', 'wY']) }),
-  Object.freeze({ id: 'mE', x: 3, z: 4, links: Object.freeze(['mC', 'mSideE', 'eY']) }),
-  Object.freeze({ id: 'mSideW', x: -3.5, z: 0, links: Object.freeze(['mW', 'mN']) }),
-  Object.freeze({ id: 'mSideE', x: 3.5, z: 0, links: Object.freeze(['mE', 'mN']) }),
-  Object.freeze({ id: 'mN', x: 0, z: -6, links: Object.freeze(['mSideW', 'mSideE', 'aShort', 'bShort', 'dMidS']) }),
-  Object.freeze({ id: 'aShort', x: -7, z: -8, links: Object.freeze(['mN', 'aSite']) }),
-  Object.freeze({ id: 'bShort', x: 7, z: -8, links: Object.freeze(['mN', 'bSite']) }),
-  Object.freeze({ id: 'aSite', x: -15, z: -8, links: Object.freeze(['aShort', 'lA4', 'dA']) }),
-  Object.freeze({ id: 'bSite', x: 15, z: -8, links: Object.freeze(['bShort', 'lB4', 'dB']) }),
-  Object.freeze({ id: 'lA1', x: -24, z: 13, links: Object.freeze(['aw', 'lA2']) }),
-  Object.freeze({ id: 'lA2', x: -24, z: 5, links: Object.freeze(['lA1', 'lA3', 'wY']) }),
-  Object.freeze({ id: 'lA3', x: -18.5, z: -1, links: Object.freeze(['lA2', 'lA4']) }),
-  Object.freeze({ id: 'lA4', x: -18, z: -5, links: Object.freeze(['lA3', 'aSite']) }),
-  Object.freeze({ id: 'lB1', x: 24, z: 13, links: Object.freeze(['ae', 'lB2']) }),
-  Object.freeze({ id: 'lB2', x: 24, z: 5, links: Object.freeze(['lB1', 'lB3', 'eY']) }),
-  Object.freeze({ id: 'lB3', x: 18.5, z: -1, links: Object.freeze(['lB2', 'lB4']) }),
-  Object.freeze({ id: 'lB4', x: 18, z: -5, links: Object.freeze(['lB3', 'bSite']) }),
-  Object.freeze({ id: 'wY', x: -10, z: 7.5, links: Object.freeze(['mW', 'lA2']) }),
-  Object.freeze({ id: 'eY', x: 10, z: 7.5, links: Object.freeze(['mE', 'lB2']) }),
-  Object.freeze({ id: 'ds', x: 0, z: -19, links: Object.freeze(['dMidS', 'dA', 'dB']) }),
-  Object.freeze({ id: 'dMidS', x: 0, z: -12, links: Object.freeze(['ds', 'mN']) }),
-  Object.freeze({ id: 'dA', x: -18, z: -18, links: Object.freeze(['ds', 'aSite']) }),
-  Object.freeze({ id: 'dB', x: 18, z: -18, links: Object.freeze(['ds', 'bSite']) }),
+  wp('as', 0, 19, ['asW', 'asE', 'mS']), wp('asW', -20.5, 19, ['as', 'aw']),
+  wp('asE', 20.5, 19, ['as', 'ae']), wp('aw', -20.5, 15, ['asW', 'lA1']),
+  wp('ae', 20.5, 15, ['asE', 'lB1']), wp('mS', 0, 13, ['as', 'mC']),
+  wp('mC', 0, 7, ['mS', 'mW', 'mE']), wp('mW', -3, 4, ['mC', 'mSideW', 'wY']),
+  wp('mE', 3, 4, ['mC', 'mSideE', 'eY']), wp('mSideW', -3.5, 0, ['mW', 'mN']),
+  wp('mSideE', 3.5, 0, ['mE', 'mN']), wp('mN', 0, -6, ['mSideW', 'mSideE', 'aShort', 'bShort', 'dMidS']),
+  wp('aShort', -7, -8, ['mN', 'aSite']), wp('bShort', 7, -8, ['mN', 'bSite']),
+  wp('aSite', -15, -8, ['aShort', 'lA4', 'dA']), wp('bSite', 15, -8, ['bShort', 'lB4', 'dB']),
+  wp('lA1', -24, 13, ['aw', 'lA2']), wp('lA2', -24, 5, ['lA1', 'lA3', 'wY']),
+  wp('lA3', -18.5, -1, ['lA2', 'lA4']), wp('lA4', -18, -5, ['lA3', 'aSite']),
+  wp('lB1', 24, 13, ['ae', 'lB2']), wp('lB2', 24, 5, ['lB1', 'lB3', 'eY']),
+  wp('lB3', 18.5, -1, ['lB2', 'lB4']), wp('lB4', 18, -5, ['lB3', 'bSite']),
+  wp('wY', -10, 7.5, ['mW', 'lA2']), wp('eY', 10, 7.5, ['mE', 'lB2']),
+  wp('ds', 0, -19, ['dMidS', 'dA', 'dB']), wp('dMidS', 0, -12, ['ds', 'mN']),
+  wp('dA', -18, -18, ['ds', 'aSite']), wp('dB', 18, -18, ['ds', 'bSite']),
 ]);
 
 export const MAP = Object.freeze({
@@ -178,7 +151,6 @@ export const MAP = Object.freeze({
   boxes: BOXES,
   spawns: SPAWNS,
   sites: SITES,
-  callouts: CALLOUTS,
   waypoints: WAYPOINTS,
 });
 
@@ -297,18 +269,3 @@ export function raycastSolids(ox, oy, oz, dx, dy, dz, maxDistance, out) {
   return out;
 }
 
-export function calloutAt(x, z) {
-  let best = CALLOUTS[0];
-  let bestDistance = Infinity;
-  for (let index = 0; index < CALLOUTS.length; index += 1) {
-    const item = CALLOUTS[index];
-    const dx = item.x - x;
-    const dz = item.z - z;
-    const distance = dx * dx + dz * dz;
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = item;
-    }
-  }
-  return best.name;
-}

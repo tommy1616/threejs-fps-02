@@ -1,4 +1,4 @@
-import { WEAPONS } from './weapons.js';
+import { SHOP } from './weapons.js';
 
 function formatTime(seconds) {
   const value = Math.max(0, Math.ceil(seconds));
@@ -17,6 +17,8 @@ export function createHud() {
   const hitmarker = document.getElementById('hitmarker');
   const centerMessage = document.getElementById('center-message');
   const killfeed = document.getElementById('killfeed');
+  const scope = document.getElementById('scope');
+  const buyButton = document.getElementById('buy-button');
   const timer = document.getElementById('timer');
   const phaseLabel = document.getElementById('phase-label');
   const scoreV = document.getElementById('score-v');
@@ -39,9 +41,12 @@ export function createHud() {
     document.getElementById('slot-0'),
     document.getElementById('slot-1'),
     document.getElementById('slot-2'),
+    document.getElementById('slot-3'),
   ];
   const buyMenu = document.getElementById('buy-menu');
   const buyList = document.getElementById('buy-list');
+  const buyMoney = document.getElementById('buy-money');
+  const buyClose = document.getElementById('buy-close');
   const overlay = document.getElementById('overlay');
   const eyebrow = document.getElementById('overlay-eyebrow');
   const title = document.getElementById('overlay-title');
@@ -50,13 +55,23 @@ export function createHud() {
   const play = document.getElementById('play');
   const overlayKeys = document.getElementById('overlay-keys');
 
-  const slotCache = ['', '', ''];
+  const slotCache = ['', '', '', ''];
   const killRows = [];
   const killCache = [];
+  const buyButtons = [];
   let crosshairScale = 1;
   let actionPercent = -1;
   let deployHandler = () => {};
+  let buyHandler = () => {};
+  let closeBuyHandler = () => {};
+  let openBuyHandler = () => {};
   play.addEventListener('click', () => deployHandler());
+  buyClose.addEventListener('click', () => closeBuyHandler());
+  buyButton.addEventListener('click', () => openBuyHandler());
+  buyList.addEventListener('click', (event) => {
+    const button = event.target.closest('.buy-item');
+    if (button) buyHandler(button.dataset.id);
+  });
 
   for (let index = 0; index < 6; index += 1) {
     const row = document.createElement('div');
@@ -67,11 +82,24 @@ export function createHud() {
     killCache.push('');
   }
 
-  for (let index = 0; index < WEAPONS.length; index += 1) {
-    const def = WEAPONS[index];
-    const item = document.createElement('li');
-    item.innerHTML = `<kbd>${def.slot}</kbd><span>${def.name}</span><b>$${def.price}</b>`;
-    buyList.appendChild(item);
+  const categories = [...new Set(SHOP.map((item) => item.category))];
+  for (const category of categories) {
+    const heading = document.createElement('div');
+    heading.className = 'buy-cat';
+    heading.textContent = category;
+    buyList.appendChild(heading);
+    const grid = document.createElement('div');
+    grid.className = 'buy-grid';
+    buyList.appendChild(grid);
+    for (const item of SHOP.filter((entry) => entry.category === category)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'buy-item';
+      button.dataset.id = item.id;
+      button.innerHTML = `<span>${item.name}</span><b>$${item.price}</b>`;
+      grid.appendChild(button);
+      buyButtons.push({ button, item });
+    }
   }
 
   function overlayMode(state) {
@@ -128,9 +156,11 @@ export function createHud() {
     hud.hidden = !state.ui.hudVisible;
     overlayMode(state);
     buyMenu.hidden = !state.ui.buyOpen || state.ui.overlay !== 'none';
+    buyButton.hidden = state.phase !== 'freeze' || state.ui.overlay !== 'none' || state.ui.buyOpen;
 
     const player = state.player;
-    const weapon = player.slots[player.slot] ?? player.slots[0];
+    const active = player.slots[player.slot] ?? player.slots[1];
+    const weapon = active && active.magazine ? active : null;
     let vanguardAlive = 0;
     let syndicateAlive = 0;
     for (let index = 0; index < state.actors.length; index += 1) {
@@ -150,18 +180,30 @@ export function createHud() {
     setText(health, String(Math.max(0, Math.ceil(player.health))));
     setText(armor, String(Math.max(0, Math.ceil(player.armor))));
     setText(money, `$${Math.max(0, Math.round(player.money))}`);
-    setText(weaponName, weapon.name.toUpperCase());
-    setText(ammoMag, String(weapon.mag));
-    setText(ammoReserve, `/ ${weapon.reserve}`);
+    if (weapon) {
+      setText(weaponName, weapon.name.toUpperCase());
+      setText(ammoMag, String(weapon.mag));
+      setText(ammoReserve, `/ ${weapon.reserve}`);
+    } else if (active?.kind === 'grenade') {
+      setText(weaponName, 'GRENADES');
+      setText(ammoMag, String(player.grenades.frag + player.grenades.smoke));
+      setText(ammoReserve, 'READY');
+    } else {
+      setText(weaponName, 'RELAY CHARGE');
+      setText(ammoMag, '--');
+      setText(ammoReserve, '');
+    }
     const phase = charge.planted ? 'CHARGE ARMED'
       : state.phase === 'live' ? 'LIVE'
-        : state.phase === 'freeze' ? 'FREEZE'
+        : state.phase === 'freeze' ? 'BUY PHASE'
           : state.phase === 'roundEnd' ? 'ROUND OVER'
             : state.phase === 'matchOver' ? 'MATCH OVER' : 'BRIEFING';
     setText(phaseLabel, phase);
-    const message = weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '';
+    const message = weapon && weapon.reloadLeft > 0 ? 'RELOADING' : state.ui.messageTime > 0 ? state.ui.message : '';
     setText(centerMessage, message);
     centerMessage.classList.toggle('big', message === 'SIDES SWITCHED');
+    scope.hidden = !player.scoped;
+    setText(buyMoney, `$${Math.max(0, Math.round(player.money))}`);
 
     const scale = Math.min(3.2, 1 + player.spread * 90);
     if (Math.abs(scale - crosshairScale) > 0.03) {
@@ -208,15 +250,24 @@ export function createHud() {
       }
     }
 
+    const labels = [
+      player.slots[0] ? `1  ${player.slots[0].name.toUpperCase()}` : '1  EMPTY',
+      `2  ${player.slots[1].name.toUpperCase()}`,
+      `3  UTILITY ${player.grenades.frag + player.grenades.smoke}`,
+      `4  CHARGE ${player.team === 'vanguard' && charge.carrierId === player.id ? 'CARRIED' : ''}`,
+    ];
     for (let index = 0; index < slotEls.length; index += 1) {
-      const slot = player.slots[index];
-      if (!slot) continue;
-      const label = `${index + 1}  ${slot.name.toUpperCase()}`;
-      if (slotCache[index] !== label) {
-        slotEls[index].textContent = label;
-        slotCache[index] = label;
+      if (slotCache[index] !== labels[index]) {
+        slotEls[index].textContent = labels[index];
+        slotCache[index] = labels[index];
       }
       slotEls[index].classList.toggle('active', player.slot === index);
+    }
+
+    for (let index = 0; index < buyButtons.length; index += 1) {
+      const entry = buyButtons[index];
+      const locked = entry.item.price > player.money || (entry.item.defenders && player.team !== 'syndicate');
+      entry.button.classList.toggle('off', locked);
     }
 
     let rowsUsed = 0;
@@ -243,8 +294,9 @@ export function createHud() {
 
   return {
     sync,
-    onDeploy(handler) {
-      deployHandler = handler;
-    },
+    onDeploy(handler) { deployHandler = handler; },
+    onBuy(handler) { buyHandler = handler; },
+    onBuyClose(handler) { closeBuyHandler = handler; },
+    onBuyButton(handler) { openBuyHandler = handler; },
   };
 }

@@ -42,31 +42,14 @@ export const CONFIG = deepFreeze({
     crouchLerp: 12,
   },
   round: {
-    freezeSeconds: 5,
-    buySeconds: 12,
+    freezeSeconds: 12,
     liveSeconds: 115,
     roundEndSeconds: 5,
-    warmupSeconds: 4,
     plantSeconds: 3.2,
     defuseSeconds: 7,
     defuseKitSeconds: 5,
     postPlantSeconds: 40,
     roundsToWin: 8,
-    regulationRounds: 12,
-  },
-  economy: {
-    startMoney: 800,
-    maxMoney: 9000,
-    killReward: 300,
-    objectiveReward: 300,
-    teamWinReward: 3250,
-    lossBase: 1400,
-    lossStep: 500,
-    lossMax: 3400,
-  },
-  teams: {
-    vanguard: { id: 'vanguard', name: 'Vanguard', short: 'VAN' },
-    syndicate: { id: 'syndicate', name: 'Syndicate', short: 'SYN' },
   },
   bots: {
     viewDistance: 46,
@@ -74,10 +57,5 @@ export const CONFIG = deepFreeze({
     hearingRadius: 18,
     reactionTime: 0.28,
     aimError: 0.022,
-    repathSeconds: 0.5,
-  },
-  hud: {
-    hitMarkerSeconds: 0.09,
-    killFeedSize: 5,
   },
 });

@@ -162,7 +162,8 @@ function spreadTarget(actor, weapon) {
   let multiplier = 1 + weapon.moveMultiplier * Math.min(1, speed / MOVE.walkSpeed);
   if (!actor.onGround) multiplier = Math.max(multiplier, weapon.airMultiplier);
   if (actor.crouching) multiplier *= weapon.crouchMultiplier;
-  return Math.min(weapon.spreadMax, weapon.baseSpread * multiplier);
+  const base = actor.scoped ? weapon.scopedSpread ?? weapon.baseSpread : weapon.baseSpread;
+  return Math.min(weapon.spreadMax, base * multiplier);
 }
 
 function computeAim(state, actor) {
@@ -193,7 +194,6 @@ export function fireHitscan(state, actor, weapon) {
   actor.spread = Math.min(weapon.spreadMax, actor.spread + weapon.spreadPerShot);
   actor.recoilPitch += weapon.recoilPitch;
   actor.recoilYaw += (state.rng() * 2 - 1) * weapon.recoilYaw;
-  if (actor.isPlayer) state.stats.shotsFired += 1;
   addNoise(state, actor);
 
   computeAim(state, actor);
@@ -218,11 +218,8 @@ export function fireHitscan(state, actor, weapon) {
 
   if (hit.actor) {
     const damage = weapon.damage * (hit.part === 'head' ? weapon.headshotMultiplier : 1);
-    applyDamage(state, hit.actor, damage, actor, weapon.name, hit.part);
-    if (actor.isPlayer) {
-      state.stats.shotsHit += 1;
-      state.ui.hitMarker = CONFIG.hud.hitMarkerSeconds;
-    }
+    applyDamage(state, hit.actor, damage, actor, weapon, hit.part);
+    if (actor.isPlayer) state.ui.hitMarker = 0.09;
     endX = hit.x;
     endY = hit.y;
     endZ = hit.z;
@@ -256,6 +253,13 @@ export function startReload(state, actor, silent = false) {
 export function stepWeapons(state, input, dt) {
   const player = state.player;
   const weapon = player.slots[player.slot];
+  if (!weapon || !weapon.magazine) {
+    player.scoped = false;
+    input.firePressed = false;
+    input.reloadPressed = false;
+    return;
+  }
+  player.scoped = Boolean(input.aim && weapon.scope && weapon.reloadLeft === 0);
 
   weapon.fireCooldown = Math.max(0, weapon.fireCooldown - dt);
   weapon.emptyClick = Math.max(0, weapon.emptyClick - dt);

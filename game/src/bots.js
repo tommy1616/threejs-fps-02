@@ -165,6 +165,7 @@ function updateStuck(state, bot, dt) {
 
 export function resetBots(state) {
   let defenderIndex = 0;
+  const marks = { vanguard: false, syndicate: false };
   for (let index = 0; index < state.bots.length; index += 1) {
     const bot = state.bots[index];
     let target;
@@ -195,6 +196,9 @@ export function resetBots(state) {
     ai.stuckTimer = 0;
     ai.stuckX = bot.spawn.x;
     ai.stuckZ = bot.spawn.z;
+    ai.marksman = !marks[bot.team];
+    marks[bot.team] = true;
+    bot.slot = bot.slots[0] ? 0 : 1;
   }
 }
 
@@ -306,7 +310,8 @@ export function stepBots(state, dt) {
       continue;
     }
 
-    const weapon = bot.slots[bot.slot];
+    const weapon = bot.slots[bot.slot] || bot.slots[1];
+    bot.scoped = Boolean(weapon.scope && ai.state === 'engage');
     weapon.fireCooldown = Math.max(0, weapon.fireCooldown - dt);
     weapon.muzzleFlash = Math.max(0, weapon.muzzleFlash - dt);
     weapon.kick += (0 - weapon.kick) * Math.min(1, dt * 18);

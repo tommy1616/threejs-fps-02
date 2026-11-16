@@ -9,6 +9,8 @@ export function createInput(canvas, onLockChange = () => {}) {
     slot: 0,
     firePressed: false,
     enter: false,
+    last: false,
+    wheel: 0,
   };
   const snapshot = {
     forward: 0,
@@ -21,6 +23,9 @@ export function createInput(canvas, onLockChange = () => {}) {
     buyPressed: false,
     slotPressed: 0,
     enterPressed: false,
+    lastPressed: false,
+    wheel: 0,
+    aim: false,
     fire: false,
     firePressed: false,
     lookDX: 0,
@@ -28,16 +33,19 @@ export function createInput(canvas, onLockChange = () => {}) {
     locked: false,
   };
   let firing = false;
+  let aiming = false;
   let locked = false;
 
   function queueKey(code) {
     if (code === 'Space') pending.jump = true;
     else if (code === 'KeyR') pending.reload = true;
     else if (code === 'KeyB') pending.buy = true;
-    else if (code === 'Digit1') pending.slot = 1;
-    else if (code === 'Digit2') pending.slot = 2;
-    else if (code === 'Digit3') pending.slot = 3;
+    else if (code === 'KeyQ') pending.last = true;
     else if (code === 'Enter') pending.enter = true;
+    else if (code.startsWith('Digit')) {
+      const digit = Number(code.slice(5));
+      if (digit >= 1 && digit <= 9) pending.slot = digit;
+    }
   }
 
   function onKeyDown(event) {
@@ -53,6 +61,7 @@ export function createInput(canvas, onLockChange = () => {}) {
   function onBlur() {
     keys.clear();
     firing = false;
+    aiming = false;
   }
 
   function onMouseMove(event) {
@@ -62,13 +71,23 @@ export function createInput(canvas, onLockChange = () => {}) {
   }
 
   function onMouseDown(event) {
-    if (!locked || event.button !== 0) return;
-    firing = true;
-    pending.firePressed = true;
+    if (!locked) return;
+    if (event.button === 0) {
+      firing = true;
+      pending.firePressed = true;
+    } else if (event.button === 2) {
+      aiming = true;
+    }
   }
 
   function onMouseUp(event) {
     if (event.button === 0) firing = false;
+    else if (event.button === 2) aiming = false;
+  }
+
+  function onWheel(event) {
+    if (!locked) return;
+    pending.wheel += Math.sign(event.deltaY);
   }
 
   function onContextMenu(event) {
@@ -84,6 +103,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     if (!locked) {
       keys.clear();
       firing = false;
+      aiming = false;
       pending.lookX = 0;
       pending.lookY = 0;
     }
@@ -106,6 +126,9 @@ export function createInput(canvas, onLockChange = () => {}) {
     snapshot.buyPressed = pending.buy;
     snapshot.slotPressed = pending.slot;
     snapshot.enterPressed = pending.enter;
+    snapshot.lastPressed = pending.last;
+    snapshot.wheel = pending.wheel;
+    snapshot.aim = aiming;
     snapshot.fire = firing;
     snapshot.firePressed = pending.firePressed;
     snapshot.lookDX = pending.lookX;
@@ -116,6 +139,8 @@ export function createInput(canvas, onLockChange = () => {}) {
     pending.buy = false;
     pending.slot = 0;
     pending.enter = false;
+    pending.last = false;
+    pending.wheel = 0;
     pending.firePressed = false;
     pending.lookX = 0;
     pending.lookY = 0;
@@ -128,6 +153,7 @@ export function createInput(canvas, onLockChange = () => {}) {
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);
+  window.addEventListener('wheel', onWheel, { passive: true });
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('contextmenu', onContextMenu);
   document.addEventListener('pointerlockchange', onPointerLockChange);
@@ -148,6 +174,7 @@ export function createInput(canvas, onLockChange = () => {}) {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('click', onCanvasClick);
       canvas.removeEventListener('contextmenu', onContextMenu);
       document.removeEventListener('pointerlockchange', onPointerLockChange);

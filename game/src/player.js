@@ -114,20 +114,41 @@ export function moveActor(actor, wishX, wishZ, speed, dt, jump) {
   resolveVertical(actor, dt);
 }
 
+function canSelect(state, player, slot) {
+  if (slot === 0) return Boolean(player.slots[0]);
+  if (slot === 1) return true;
+  if (slot === 2) return player.grenades.frag + player.grenades.smoke > 0;
+  if (slot === 3) return player.team === 'vanguard' && state.objective.carrierId === player.id;
+  return false;
+}
+
+function select(state, player, slot) {
+  if (slot < 0 || slot > 3 || !canSelect(state, player, slot) || slot === player.slot) return;
+  player.lastSlot = player.slot;
+  player.slot = slot;
+  player.spread = 0;
+  player.scoped = false;
+}
+
 export function stepPlayer(state, input, dt) {
   const player = state.player;
   if (!player.alive) return;
 
-  const weapon = player.slots[player.slot];
-
   if (input.slotPressed > 0) {
-    const nextSlot = clamp(input.slotPressed - 1, 0, player.slots.length - 1);
-    if (nextSlot !== player.slot) {
-      weapon.reloadLeft = 0;
-      player.slot = nextSlot;
-      player.spread = 0;
-    }
+    select(state, player, clamp(input.slotPressed - 1, 0, 3));
     input.slotPressed = 0;
+  }
+  if (input.wheel) {
+    const dir = Math.sign(input.wheel);
+    for (let step = 1; step <= 4; step += 1) {
+      const slot = (player.slot + dir * step + 4) % 4;
+      if (canSelect(state, player, slot)) { select(state, player, slot); break; }
+    }
+    input.wheel = 0;
+  }
+  if (input.lastPressed) {
+    select(state, player, player.lastSlot);
+    input.lastPressed = false;
   }
 
   if (input.crouch && !player.crouching) {
@@ -157,4 +178,15 @@ export function stepPlayer(state, input, dt) {
   const jump = input.jumpPressed;
   input.jumpPressed = false;
   moveActor(player, wishX, wishZ, speed, dt, jump);
+  if (state.phase === 'freeze') {
+    const dx = player.position.x - player.spawn.x;
+    const dz = player.position.z - player.spawn.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance > 7) {
+      player.position.x = player.spawn.x + dx / distance * 7;
+      player.position.z = player.spawn.z + dz / distance * 7;
+      player.velocity.x = 0;
+      player.velocity.z = 0;
+    }
+  }
 }
