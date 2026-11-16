@@ -24,14 +24,14 @@ const BOXES = Object.freeze([
 	box(4, 0, -16, 5, 4.6, -10, 'steel', 'wall'),
 	box(4, 0, -7, 5, 4.6, 3, 'steel', 'wall'),
 	box(4, 0, 7, 5, 4.6, 16, 'steel', 'wall'),
-	box(-10, 0, -16, -9, 4.6, -10, 'sand', 'wall'),
-	box(-10, 0, -7, -9, 4.6, -4, 'sand', 'wall'),
-	box(-25, 0, -4, -20, 4.6, -3, 'sand', 'wall'),
-	box(-16, 0, -4, -10, 4.6, -3, 'sand', 'wall'),
-	box(9, 0, -16, 10, 4.6, -10, 'sand', 'wall'),
-	box(9, 0, -7, 10, 4.6, -4, 'sand', 'wall'),
-	box(10, 0, -4, 16, 4.6, -3, 'sand', 'wall'),
-	box(20, 0, -4, 25, 4.6, -3, 'sand', 'wall'),
+	box(-10, 0, -16, -9, 4.6, -10, 'vanguard', 'wall'),
+	box(-10, 0, -7, -9, 4.6, -4, 'vanguard', 'wall'),
+	box(-25, 0, -4, -20, 4.6, -3, 'vanguard', 'wall'),
+	box(-16, 0, -4, -10, 4.6, -3, 'vanguard', 'wall'),
+	box(9, 0, -16, 10, 4.6, -10, 'syndicate', 'wall'),
+	box(9, 0, -7, 10, 4.6, -4, 'syndicate', 'wall'),
+	box(10, 0, -4, 16, 4.6, -3, 'syndicate', 'wall'),
+	box(20, 0, -4, 25, 4.6, -3, 'syndicate', 'wall'),
 	box(-17, 0, -3, -16, 4.6, 3, 'steel', 'wall'),
 	box(-17, 0, 7, -16, 4.6, 16, 'steel', 'wall'),
 	box(16, 0, -3, 17, 4.6, 3, 'steel', 'wall'),
@@ -62,6 +62,24 @@ const SITES = Object.freeze({
 	B: Object.freeze({ minX: 10, maxX: 24, minZ: -16, maxZ: -4, plantX: 17, plantZ: -9 }),
 });
 
+const PROPS = Object.freeze([
+	{ type: 'paint', x: 0, z: 9, w: 0.35, d: 14, color: '#e3a43d' },
+	{ type: 'paint', x: -21, z: 4, w: 0.35, d: 15, color: '#3f9fa6' },
+	{ type: 'paint', x: 21, z: 4, w: 0.35, d: 15, color: '#b85f3c' },
+	{ type: 'sign', x: 0, y: 2.6, z: 15.6, yaw: Math.PI, text: 'SALTWORKS', color: '#e9e1cb' },
+	{ type: 'sign', x: -13, y: 2.4, z: -2.96, text: 'BRINE LINE', color: '#3f9fa6' },
+	{ type: 'sign', x: 13, y: 2.4, z: -2.96, text: 'PUMP HOUSE', color: '#b85f3c' },
+	{ type: 'barrel', x: -24, z: 14 },
+	{ type: 'barrel', x: 24, z: 14 },
+	{ type: 'barrel', x: -24, z: -12 },
+	{ type: 'barrel', x: 24, z: -12 },
+	{ type: 'pipe', x: 0, z: -22.5, len: 20 },
+	{ type: 'pipe', x: 0, z: 22.5, len: 20 },
+	{ type: 'lamp', x: -16, z: -14 },
+	{ type: 'lamp', x: 16, z: -14 },
+	{ type: 'lamp', x: 4.5, z: 11 },
+	{ type: 'catwalk', x: -23, z: 4, len: 14 },
+]);
 const wp = (id, x, z, links) => Object.freeze({ id, x, z, links: Object.freeze(links) });
 
 const WAYPOINTS = Object.freeze([
@@ -101,6 +119,7 @@ export const MAP = Object.freeze({
 	boxes: BOXES,
 	spawns: SPAWNS,
 	sites: SITES,
+	props: PROPS,
 	waypoints: WAYPOINTS,
 });
 

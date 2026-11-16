@@ -5,6 +5,7 @@ import { PALETTE } from './palette.js';
 import { MAP } from './map.js';
 import { createViewmodels } from './viewmodel.js';
 import { createBotRenders } from './botsRender.js';
+import { createProps, createSky, createTextures } from './art.js';
 
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
 
@@ -28,8 +29,8 @@ function material(color, roughness, metalness, emissive = null) {
 	return new THREE.MeshStandardMaterial(options);
 }
 
-function createMaterials() {
-	return {
+function createMaterials(textures) {
+	const materials = {
 		salt: material(PALETTE.salt, 0.96, 0.02),
 		sand: material(PALETTE.sand, 0.9, 0.03),
 		steel: material(PALETTE.steel, 0.68, 0.22),
@@ -41,6 +42,10 @@ function createMaterials() {
 		syndicate: material(PALETTE.syndicate, 0.65, 0.12),
 		white: material(PALETTE.white, 0.7, 0.05),
 	};
+	materials.salt.map = textures.floor;
+	materials.sand.map = textures.wall;
+	materials.crate.map = textures.wood;
+	return materials;
 }
 
 function mesh(geometry, mat) {
@@ -66,10 +71,10 @@ function buildMap(scene, materials) {
 }
 
 function buildLights(scene) {
-	const sky = new THREE.HemisphereLight(new THREE.Color(PALETTE.sky), new THREE.Color(PALETTE.sand), 1.15);
+	const sky = new THREE.HemisphereLight(new THREE.Color(PALETTE.sky), new THREE.Color(PALETTE.sand), 1.35);
 	scene.add(sky);
 
-	const key = new THREE.DirectionalLight(new THREE.Color(PALETTE.white), 2.4);
+	const key = new THREE.DirectionalLight(new THREE.Color(PALETTE.white), 2.6);
 	key.position.set(18, 28, 12);
 	key.target.position.set(0, 0, -2);
 	key.castShadow = true;
@@ -102,7 +107,7 @@ function createObjectiveView(scene, materials) {
 		canvas.width = 256;
 		canvas.height = 256;
 		const ctx = canvas.getContext('2d');
-		ctx.strokeStyle = PALETTE.accent;
+		ctx.strokeStyle = id === 'A' ? PALETTE.vanguard : PALETTE.syndicate;
 		ctx.lineWidth = 10;
 		ctx.beginPath();
 		ctx.arc(128, 128, 104, 0, Math.PI * 2);
@@ -236,14 +241,15 @@ export function createWorld(container, state) {
 	renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.PCFShadowMap;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.outputColorSpace = THREE.SRGBColorSpace;
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
-	renderer.toneMappingExposure = 1.08;
+	renderer.toneMappingExposure = 1.16;
 	container.appendChild(renderer.domElement);
 
 	const scene = new THREE.Scene();
 	scene.background = new THREE.Color(PALETTE.sky);
-	scene.fog = new THREE.Fog(new THREE.Color(PALETTE.fog), 42, 118);
+	scene.fog = new THREE.FogExp2(new THREE.Color(PALETTE.fog), 0.009);
 	const camera = new THREE.PerspectiveCamera(
 		CONFIG.view.fov,
 		window.innerWidth / window.innerHeight,
@@ -253,9 +259,12 @@ export function createWorld(container, state) {
 	camera.rotation.order = 'YXZ';
 	scene.add(camera);
 
-	const materials = createMaterials();
+	const textures = createTextures(state.seed);
+	const materials = createMaterials(textures);
 	buildMap(scene, materials);
 	buildLights(scene);
+	createSky(scene);
+	createProps(scene, materials, textures, MAP.props);
 	const objectiveView = createObjectiveView(scene, materials);
 	const nadeView = createNadeView(scene, state);
 	const botRenders = createBotRenders(scene, state);
