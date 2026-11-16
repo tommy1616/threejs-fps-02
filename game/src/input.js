@@ -8,6 +8,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     buy: false,
     slot: 0,
     firePressed: false,
+    aimPressed: false,
     enter: false,
     last: false,
     wheel: 0,
@@ -26,6 +27,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     lastPressed: false,
     wheel: 0,
     aim: false,
+    aimPressed: false,
     fire: false,
     firePressed: false,
     lookDX: 0,
@@ -77,6 +79,7 @@ export function createInput(canvas, onLockChange = () => {}) {
       pending.firePressed = true;
     } else if (event.button === 2) {
       aiming = true;
+      pending.aimPressed = true;
     }
   }
 
@@ -129,6 +132,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     snapshot.lastPressed = pending.last;
     snapshot.wheel = pending.wheel;
     snapshot.aim = aiming;
+    snapshot.aimPressed = pending.aimPressed;
     snapshot.fire = firing;
     snapshot.firePressed = pending.firePressed;
     snapshot.lookDX = pending.lookX;
@@ -142,6 +146,7 @@ export function createInput(canvas, onLockChange = () => {}) {
     pending.last = false;
     pending.wheel = 0;
     pending.firePressed = false;
+    pending.aimPressed = false;
     pending.lookX = 0;
     pending.lookY = 0;
     return snapshot;

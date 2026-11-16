@@ -12,10 +12,11 @@ import { restartMatch, startMatch, stepRounds } from './rounds.js';
 import { stepObjective } from './objective.js';
 import { buyItem, canBuy } from './economy.js';
 import { createWeapon, SHOP, WEAPONS } from './weapons.js';
+import { stepGrenades } from './grenades.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedShot = params.get('shot');
-const shot = ['start', 'play', 'end', 'plant', 'defuse', 'buy'].includes(requestedShot) ? requestedShot : null;
+const shot = ['start', 'play', 'end', 'plant', 'defuse', 'buy', 'nade'].includes(requestedShot) ? requestedShot : null;
 const seed = Number.parseInt(params.get('seed') ?? '1', 10) || 1;
 const testMode = params.get('test') === '1';
 
@@ -48,6 +49,19 @@ function givePrimary(player, id = 'harrow') {
   player.slot = 0;
 }
 
+function liveShot(round, v, s, time) {
+  state.phase = 'live';
+  state.view.mode = 'player';
+  state.ui.hudVisible = true;
+  state.ui.overlay = 'none';
+  state.ui.message = '';
+  state.ui.messageTime = 0;
+  state.match.round = round;
+  state.match.phaseTime = time;
+  state.match.score.vanguard = v;
+  state.match.score.syndicate = s;
+}
+
 function setTracer(index, x, y, z, tx, ty, tz) {
   const tracer = state.tracers[index];
   const dx = tx - x;
@@ -68,15 +82,7 @@ function setTracer(index, x, y, z, tx, ty, tz) {
 }
 
 function setupPlayShot() {
-  state.phase = 'live';
-  state.view.mode = 'player';
-  state.ui.hudVisible = true;
-  state.ui.overlay = 'none';
-  state.match.round = 5;
-  state.match.phaseTime = 83;
-  state.match.score.vanguard = 2;
-  state.match.score.syndicate = 2;
-
+  liveShot(5, 2, 2, 83);
   const player = state.player;
   placeActor(player, 0, 14.2, 0, -0.015);
   player.health = 84;
@@ -142,7 +148,10 @@ function advanceWorld(state, dt) {
     actor.prevYaw = actor.yaw;
     actor.prevPitch = actor.pitch;
   }
-  if (state.phase === 'live') stepBots(state, dt);
+  if (state.phase === 'live') {
+    stepBots(state, dt);
+    stepGrenades(state, dt);
+  }
   stepCombat(state, dt);
   stepObjective(state, null, dt);
   stepRounds(state, dt);
@@ -183,17 +192,7 @@ function placeTeam(state, team, spots) {
 }
 
 function setupPlantShot() {
-  state.phase = 'live';
-  state.view.mode = 'player';
-  state.ui.hudVisible = true;
-  state.ui.overlay = 'none';
-  state.ui.message = '';
-  state.ui.messageTime = 0;
-  state.match.round = 3;
-  state.match.phaseTime = 74;
-  state.match.score.vanguard = 1;
-  state.match.score.syndicate = 1;
-
+  liveShot(3, 1, 1, 74);
   const player = state.player;
   placeActor(player, -15, -12.2, 2.58, -0.14);
   player.team = 'vanguard';
@@ -215,17 +214,7 @@ function setupPlantShot() {
 }
 
 function setupDefuseShot() {
-  state.phase = 'live';
-  state.view.mode = 'player';
-  state.ui.hudVisible = true;
-  state.ui.overlay = 'none';
-  state.ui.message = '';
-  state.ui.messageTime = 0;
-  state.match.round = 9;
-  state.match.phaseTime = 74;
-  state.match.score.vanguard = 4;
-  state.match.score.syndicate = 4;
-
+  liveShot(9, 4, 4, 74);
   const player = state.player;
   player.team = 'syndicate';
   placeActor(player, -14.9, -9.4, 2.0, -0.4);
@@ -245,6 +234,24 @@ function setupDefuseShot() {
 
   placeTeam(state, 'syndicate', [[-19, -6, 1.9], [-13.5, -11.5, 0.7], [-20.5, -12, 1.4], [-12, -6.5, 1.0]]);
   placeTeam(state, 'vanguard', [[-20, -4.5, -2.2], [-12, -8.5, -1.6], [-18, -13.5, -2.6], [-11, -13, -1.9], [-16, -3.5, -3.0]]);
+}
+
+function setupNadeShot() {
+  liveShot(4, 2, 2, 62);
+  const player = state.player;
+  placeActor(player, -12.5, -5, 0.9, -0.08);
+  givePrimary(player);
+  player.health = 78;
+  player.armor = 50;
+  player.money = 3100;
+  Object.assign(state.objective, {
+    state: 'planted', planted: true, site: 'A', attackSite: 'A', timer: 28,
+    plantProgress: 1, x: -17, z: -9, hint: '', result: null,
+  });
+  Object.assign(state.smokes[0], { active: true, x: -17, y: 1, z: -9, radius: 4.5, ttl: 12, maxTtl: 15 });
+  Object.assign(state.blasts[0], { active: true, x: -15.5, y: 1, z: -7.5, ttl: 0.3, maxTtl: 0.35 });
+  Object.assign(state.grenades[0], { active: true, kind: 'smoke', x: -13, y: 2.2, z: -7 });
+  state.player.shake = 0.8;
 }
 
 function setupBuyShot() {
@@ -375,6 +382,7 @@ else if (shot === 'start') setupStartShot();
 else if (shot === 'plant') setupPlantShot();
 else if (shot === 'defuse') setupDefuseShot();
 else if (shot === 'buy') setupBuyShot();
+else if (shot === 'nade') setupNadeShot();
 if (testMode) setupTest();
 
 const world = createWorld(document.getElementById('game'), state);
@@ -477,7 +485,10 @@ function simulate(state, dt) {
       stepPlayer(state, snapshot, dt);
       if (state.phase === 'live') stepWeapons(state, snapshot, dt);
     }
-    if (state.phase === 'live') stepBots(state, dt);
+    if (state.phase === 'live') {
+      stepBots(state, dt);
+      stepGrenades(state, dt);
+    }
   }
   stepCombat(state, dt);
   stepObjective(state, snapshot, dt);

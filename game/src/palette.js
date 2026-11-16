@@ -14,7 +14,3 @@ export const PALETTE = {
   white: '#f2eee2',
   hit: '#efd277',
 };
-
-export function shade(name) {
-  return PALETTE[name] ?? PALETTE.white;
-}

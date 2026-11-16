@@ -66,6 +66,8 @@ function createActor(id, name, team, isPlayer, spawn, role) {
     scoped: false,
     recoilPitch: 0,
     recoilYaw: 0,
+    shotIndex: 0,
+    shake: 0,
     ai: {
       state: 'patrol',
       route: [],
@@ -74,14 +76,14 @@ function createActor(id, name, team, isPlayer, spawn, role) {
       holdNode: null,
       holdYaw: spawn.yaw,
       reaction: 0,
-      trackTime: 0,
       aimError: CONFIG.bots.aimError,
       think: 0,
       searchTime: 0,
       lastSeenX: spawn.x,
       lastSeenZ: spawn.z,
-      strafe: 1,
       marksman: false,
+      nadeTimer: 4,
+      smoked: false,
     },
   };
 }
@@ -99,21 +101,6 @@ function createTracers() {
     life: 0,
     maxLife: 0,
     team: null,
-  }));
-}
-
-function createImpacts() {
-  return Array.from({ length: CONFIG.pools.impacts }, () => ({
-    active: false,
-    x: 0,
-    y: 0,
-    z: 0,
-    nx: 0,
-    ny: 0,
-    nz: 0,
-    life: 0,
-    maxLife: 0,
-    kind: 'wall',
   }));
 }
 
@@ -208,8 +195,6 @@ export function createGameState(seed = 1) {
       site: null,
       attackSite: null,
       carrierId: null,
-      planterId: null,
-      defuserId: null,
       planted: false,
       wasPlanted: false,
       timer: 0,
@@ -233,13 +218,16 @@ export function createGameState(seed = 1) {
       overlay: 'menu',
       buyOpen: false,
       hitMarker: 0,
+      hitHead: false,
       message: '',
       messageTime: 0,
     },
     tracers: createTracers(),
-    impacts: createImpacts(),
     noises: createNoises(),
     killFeed: createKillFeed(),
+    grenades: Array.from({ length: CONFIG.pools.grenades }, () => ({ active: false, kind: 'frag', x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fuse: 0, team: null })),
+    smokes: Array.from({ length: CONFIG.pools.smokes }, () => ({ active: false, x: 0, y: 0, z: 0, radius: 4.5, ttl: 0, maxTtl: 15 })),
+    blasts: Array.from({ length: CONFIG.pools.blasts }, () => ({ active: false, x: 0, y: 0, z: 0, ttl: 0, maxTtl: 0.35 })),
   };
 }
 

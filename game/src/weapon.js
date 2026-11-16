@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { createRayHit, raycastSolids } from './map.js';
 import { applyDamage } from './combat.js';
+import { throwGrenade } from './grenades.js';
 
 const MOVE = CONFIG.movement;
 const dir = new THREE.Vector3();
@@ -139,24 +140,6 @@ function addNoise(state, actor) {
   noises.head = (noises.head + 1) % noises.items.length;
 }
 
-function addImpact(state, x, y, z, nx, ny, nz, kind) {
-  for (let index = 0; index < state.impacts.length; index += 1) {
-    const impact = state.impacts[index];
-    if (impact.active) continue;
-    impact.active = true;
-    impact.x = x;
-    impact.y = y;
-    impact.z = z;
-    impact.nx = nx;
-    impact.ny = ny;
-    impact.nz = nz;
-    impact.life = 0.3;
-    impact.maxLife = 0.3;
-    impact.kind = kind;
-    return;
-  }
-}
-
 function spreadTarget(actor, weapon) {
   const speed = Math.hypot(actor.velocity.x, actor.velocity.z);
   let multiplier = 1 + weapon.moveMultiplier * Math.min(1, speed / MOVE.walkSpeed);
@@ -192,8 +175,11 @@ export function fireHitscan(state, actor, weapon) {
   weapon.kick = 1;
   weapon.muzzleFlash = weapon.flashTime;
   actor.spread = Math.min(weapon.spreadMax, actor.spread + weapon.spreadPerShot);
-  actor.recoilPitch += weapon.recoilPitch;
-  actor.recoilYaw += (state.rng() * 2 - 1) * weapon.recoilYaw;
+  const pattern = weapon.recoilPattern;
+  const step = actor.shotIndex % pattern.length;
+  actor.shotIndex += 1;
+  actor.recoilPitch += pattern[step][0];
+  actor.recoilYaw += pattern[step][1];
   addNoise(state, actor);
 
   computeAim(state, actor);
@@ -219,16 +205,17 @@ export function fireHitscan(state, actor, weapon) {
   if (hit.actor) {
     const damage = weapon.damage * (hit.part === 'head' ? weapon.headshotMultiplier : 1);
     applyDamage(state, hit.actor, damage, actor, weapon, hit.part);
-    if (actor.isPlayer) state.ui.hitMarker = 0.09;
+    if (actor.isPlayer) {
+      state.ui.hitMarker = 0.09;
+      state.ui.hitHead = hit.part === 'head';
+    }
     endX = hit.x;
     endY = hit.y;
     endZ = hit.z;
-    addImpact(state, hit.x, hit.y, hit.z, -dir.x, -dir.y, -dir.z, 'flesh');
   } else if (mapHit.hit) {
     endX = mapHit.x;
     endY = mapHit.y;
     endZ = mapHit.z;
-    addImpact(state, mapHit.x, mapHit.y, mapHit.z, mapHit.normalX, mapHit.normalY, mapHit.normalZ, 'wall');
   }
 
   const startX = actor.position.x + right.x * 0.14 + dir.x * 0.4;
@@ -255,11 +242,24 @@ export function stepWeapons(state, input, dt) {
   const weapon = player.slots[player.slot];
   if (!weapon || !weapon.magazine) {
     player.scoped = false;
+    if (weapon?.kind === 'grenade') {
+      const kind = player.grenades.frag > 0 ? 'frag' : player.grenades.smoke > 0 ? 'smoke' : null;
+      if (kind && (input.firePressed || input.aimPressed)
+        && throwGrenade(state, player, kind, Boolean(input.aimPressed))) {
+        player.shotIndex = 0;
+        if (player.grenades.frag + player.grenades.smoke === 0) {
+          player.lastSlot = player.slot;
+          player.slot = 1;
+        }
+      }
+    }
     input.firePressed = false;
+    input.aimPressed = false;
     input.reloadPressed = false;
     return;
   }
   player.scoped = Boolean(input.aim && weapon.scope && weapon.reloadLeft === 0);
+  if (!input.fire && !input.firePressed) player.shotIndex = 0;
 
   weapon.fireCooldown = Math.max(0, weapon.fireCooldown - dt);
   weapon.emptyClick = Math.max(0, weapon.emptyClick - dt);
@@ -306,6 +306,7 @@ export function stepWeapons(state, input, dt) {
     }
   }
   if (!weapon.automatic) input.firePressed = false;
+  input.aimPressed = false;
 
   for (let index = 0; index < state.tracers.length; index += 1) {
     const tracer = state.tracers[index];

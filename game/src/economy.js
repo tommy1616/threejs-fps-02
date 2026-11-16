@@ -67,6 +67,7 @@ export function botBuy(state) {
       if (!bot.slots[0] || bot.slots[0].id !== desired.id) buyItem(state, bot, desired.id);
       if (bot.armor < 50) buyItem(state, bot, 'vest');
       if (bot.money >= 300) buyItem(state, bot, 'frag');
+      if (bot.team === 'vanguard' && bot.money >= 300) buyItem(state, bot, 'smoke');
       if (bot.armor < 100 && bot.money >= 1000) buyItem(state, bot, 'vesthelm');
     } else if (bot.money >= 1250) {
       if (!bot.slots[0]) buyItem(state, bot, 'vireo');

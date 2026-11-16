@@ -274,7 +274,7 @@ export function createHud() {
     for (let index = 0; index < state.killFeed.items.length; index += 1) {
       const entry = state.killFeed.items[index];
       if (!entry.active || rowsUsed >= killRows.length) continue;
-      const text = `${entry.killer}  ${entry.weapon}${entry.headshot ? ' ◎' : ''}  ${entry.victim}`;
+      const text = `${entry.killer}  ${entry.weapon}${entry.headshot ? ' [HS]' : ''}  ${entry.victim}`;
       if (killCache[rowsUsed] !== text) {
         killCache[rowsUsed] = text;
         killRows[rowsUsed].textContent = text;
@@ -290,6 +290,7 @@ export function createHud() {
     }
 
     hitmarker.classList.toggle('on', state.ui.hitMarker > 0);
+    hitmarker.classList.toggle('head', state.ui.hitHead);
   }
 
   return {

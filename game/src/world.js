@@ -178,6 +178,48 @@ function createObjectiveView(scene, materials) {
   return { update };
 }
 
+function createNadeView(scene, state) {
+  const geo = new THREE.SphereGeometry(1, 8, 6);
+  const smokeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(PALETTE.white), transparent: true, opacity: 0.17, depthWrite: false });
+  const blastMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(PALETTE.accent), transparent: true, opacity: 0.65, depthWrite: false });
+  const smokes = state.smokes.map(() => {
+    const group = new THREE.Group();
+    for (let index = 0; index < 3; index += 1) group.add(new THREE.Mesh(geo, smokeMat));
+    group.visible = false;
+    scene.add(group);
+    return group;
+  });
+  const blasts = state.blasts.map(() => {
+    const mesh = new THREE.Mesh(geo, blastMat);
+    mesh.visible = false;
+    scene.add(mesh);
+    return mesh;
+  });
+  return {
+    update(state) {
+      for (let index = 0; index < smokes.length; index += 1) {
+        const item = state.smokes[index];
+        const group = smokes[index];
+        group.visible = item.active;
+        if (!item.active) continue;
+        group.position.set(item.x, item.y, item.z);
+        const fade = Math.min(1, item.ttl / 2);
+        for (let layer = 0; layer < 3; layer += 1) {
+          group.children[layer].scale.setScalar(item.radius * (0.55 + layer * 0.28) * (0.9 + 0.1 * fade));
+        }
+      }
+      for (let index = 0; index < blasts.length; index += 1) {
+        const item = state.blasts[index];
+        const mesh = blasts[index];
+        mesh.visible = item.active;
+        if (!item.active) continue;
+        mesh.position.set(item.x, item.y, item.z);
+        mesh.scale.setScalar(0.5 + (1 - item.ttl / item.maxTtl) * 2.2);
+      }
+    },
+  };
+}
+
 export function createWorld(container, state) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.view.pixelRatioCap));
@@ -200,6 +242,7 @@ export function createWorld(container, state) {
   buildMap(scene, materials);
   buildLights(scene);
   const objectiveView = createObjectiveView(scene, materials);
+  const nadeView = createNadeView(scene, state);
   const botRenders = createBotRenders(scene, state);
   const viewmodels = createViewmodels(camera, scene, state);
 
@@ -240,11 +283,18 @@ export function createWorld(container, state) {
       camera.fov += (targetFov - camera.fov) * 0.4;
       camera.updateProjectionMatrix();
     }
+    if (player.shake > 0) {
+      const amp = player.shake * 0.06;
+      camera.position.x += Math.sin(state.time * 71) * amp;
+      camera.position.y += Math.sin(state.time * 53) * amp;
+      camera.rotation.z = Math.sin(state.time * 67) * amp;
+    }
   }
 
   function render(state, alpha) {
     updateCamera(state, alpha);
     objectiveView.update(state);
+    nadeView.update(state);
     botRenders.update(state, alpha);
     viewmodels.update(state);
     renderer.render(scene, camera);

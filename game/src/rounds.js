@@ -33,6 +33,8 @@ function resetActor(state, actor) {
   actor.health = 100;
   actor.spread = 0;
   actor.scoped = false;
+  actor.shotIndex = 0;
+  actor.shake = 0;
   actor.recoilPitch = 0;
   actor.recoilYaw = 0;
   if (!survived) {
@@ -61,9 +63,11 @@ function resetActor(state, actor) {
 
 function clearPools(state) {
   for (let index = 0; index < state.tracers.length; index += 1) state.tracers[index].active = false;
-  for (let index = 0; index < state.impacts.length; index += 1) state.impacts[index].active = false;
   for (let index = 0; index < state.noises.items.length; index += 1) state.noises.items[index].active = false;
   for (let index = 0; index < state.killFeed.items.length; index += 1) state.killFeed.items[index].active = false;
+  for (let index = 0; index < state.grenades.length; index += 1) state.grenades[index].active = false;
+  for (let index = 0; index < state.smokes.length; index += 1) state.smokes[index].active = false;
+  for (let index = 0; index < state.blasts.length; index += 1) state.blasts[index].active = false;
 }
 
 function swapPlayer(state) {

@@ -28,7 +28,6 @@ function plantCharge(state, actor, site) {
   objective.planted = true;
   objective.wasPlanted = true;
   objective.site = site;
-  objective.planterId = actor.id;
   objective.carrierId = null;
   objective.x = actor.position.x;
   objective.z = actor.position.z;
@@ -46,8 +45,6 @@ export function setupCharge(state) {
   objective.site = null;
   objective.attackSite = state.rng() < 0.5 ? 'A' : 'B';
   objective.carrierId = null;
-  objective.planterId = null;
-  objective.defuserId = null;
   objective.planted = false;
   objective.wasPlanted = false;
   objective.timer = 0;
@@ -175,13 +172,11 @@ export function stepObjective(state, input, dt) {
     : Infinity;
 
   if (defuser) {
-    objective.defuserId = defuser.id;
     const seconds = defuser.kit ? ROUND.defuseKitSeconds : ROUND.defuseSeconds;
     objective.defuseProgress += dt / seconds;
     if (defuser.isPlayer) objective.hint = 'Defusing relay charge';
   } else {
-    objective.defuserId = null;
-    objective.defuseProgress = 0;
+      objective.defuseProgress = 0;
     objective.hint = playerDistance <= 1.6 ? 'Hold E to defuse' : '';
   }
 

@@ -39,6 +39,7 @@ html, body {
 
 #hitmarker { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(45deg); opacity: 0; transition: opacity 80ms linear; }
 #hitmarker.on { opacity: 1; }
+#hitmarker.head i { background: var(--white); }
 #hitmarker i { position: absolute; background: var(--accent); }
 #hitmarker i:nth-child(1) { left: 12px; top: 0; width: 2px; height: 8px; }
 #hitmarker i:nth-child(2) { left: 12px; bottom: 0; width: 2px; height: 8px; }
@@ -154,11 +155,9 @@ html, body {
 #ammo-mag { font-size: 62px; line-height: 0.95; letter-spacing: -0.05em; }
 #ammo-reserve { font-size: 17px; color: var(--muted); }
 #slots { display: flex; justify-content: flex-end; gap: 5px; margin-top: 8px; }
-#slots { flex-wrap: wrap; }
 #slots span { padding: 3px 7px; font-family: var(--font-readout); font-size: 9px; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--hairline); border-radius: 2px; }
 #slots span.active { color: var(--ink); background: var(--accent); border-color: var(--accent); }
 
-#hint { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); font-family: var(--font-readout); font-size: 9px; letter-spacing: 0.12em; color: rgba(242, 238, 226, 0.5); white-space: nowrap; }
 
 #buy-menu {
   position: fixed;
@@ -219,8 +218,6 @@ html, body {
   font-size: clamp(30px, 4.5vw, 58px);
   line-height: 1.02;
 }
-.overlay[data-mode="roundEnd"] #overlay-copy,
-.overlay[data-mode="matchOver"] #overlay-copy { margin-bottom: 16px; }
 #play {
   font: inherit;
   font-size: 15px;
@@ -248,4 +245,3 @@ html, body {
   color: var(--salt);
   text-align: center;
 }
-

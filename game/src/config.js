@@ -13,7 +13,9 @@ export const CONFIG = deepFreeze({
   maxFrameDt: 0.1,
   pools: {
     tracers: 48,
-    impacts: 64,
+    grenades: 16,
+    smokes: 8,
+    blasts: 8,
   },
   view: {
     fov: 74,

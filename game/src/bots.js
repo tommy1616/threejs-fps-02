@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 import { MAP, createRayHit, raycastSolids } from './map.js';
 import { moveActor } from './player.js';
 import { fireHitscan, startReload } from './weapon.js';
+import { smokeBlocks, throwGrenade } from './grenades.js';
 
 const NODES = new Map(MAP.waypoints.map((node) => [node.id, node]));
 const sight = createRayHit();
@@ -185,19 +186,19 @@ export function resetBots(state) {
     ai.objectiveNode = target === 'aShort' ? 'aSite' : target === 'bShort' ? 'bSite' : target;
     ai.holdYaw = holdYawFor(target);
     ai.reaction = 0;
-    ai.trackTime = 0;
     ai.aimError = BOTS.aimError;
     ai.think = state.rng() * 0.12;
     ai.searchTime = 0;
     ai.lastSeenX = bot.spawn.x;
     ai.lastSeenZ = bot.spawn.z;
-    ai.strafe = state.rng() < 0.5 ? -1 : 1;
     ai.holdTimer = 0;
     ai.stuckTimer = 0;
     ai.stuckX = bot.spawn.x;
     ai.stuckZ = bot.spawn.z;
     ai.marksman = !marks[bot.team];
     marks[bot.team] = true;
+    ai.nadeTimer = 3 + state.rng() * 6;
+    ai.smoked = false;
     bot.slot = bot.slots[0] ? 0 : 1;
   }
 }
@@ -212,6 +213,7 @@ function canSee(state, bot, target) {
   const dz = tz - bot.position.z;
   const distance = Math.hypot(dx, dy, dz);
   if (distance < 0.01 || distance > BOTS.viewDistance) return false;
+  if (smokeBlocks(state, bot.position.x, eyeY, bot.position.z, tx, ty, tz)) return false;
   raycastSolids(bot.position.x, eyeY, bot.position.z, dx / distance, dy / distance, dz / distance, distance, sight);
   return !sight.hit || sight.distance >= distance - 0.4;
 }
@@ -328,6 +330,28 @@ export function stepBots(state, dt) {
       }
     }
 
+    ai.nadeTimer -= dt;
+    if (ai.nadeTimer <= 0) {
+      ai.nadeTimer = 6 + state.rng() * 8;
+      if (bot.grenades.frag > 0 && ai.state === 'engage') {
+        const dx = ai.lastSeenX - bot.position.x;
+        const dz = ai.lastSeenZ - bot.position.z;
+        if (Math.hypot(dx, dz) > 5) {
+          bot.yaw = Math.atan2(-dx, -dz);
+          bot.pitch = 0.22;
+          throwGrenade(state, bot, 'frag', true);
+        }
+      } else if (bot.grenades.smoke > 0 && bot.team === 'vanguard' && !ai.smoked
+        && state.objective.state === 'carried' && state.objective.carrierId === bot.id) {
+        const site = MAP.sites[state.objective.attackSite || 'A'];
+        const dx = site.plantX - bot.position.x;
+        const dz = site.plantZ - bot.position.z;
+        bot.yaw = Math.atan2(-dx, -dz);
+        bot.pitch = 0.2;
+        if (throwGrenade(state, bot, 'smoke', true)) ai.smoked = true;
+      }
+    }
+
     const carrying = state.objective.state === 'carried' && state.objective.carrierId === bot.id;
     ai.think -= dt;
     if (ai.think <= 0) {
@@ -338,8 +362,7 @@ export function stepBots(state, dt) {
           ai.targetId = seen.id;
           ai.reaction = BOTS.reactionTime * (0.75 + state.rng() * 0.55);
           ai.aimError = BOTS.aimError * 1.7;
-          ai.trackTime = 0;
-        }
+              }
         ai.state = carrying ? 'patrol' : 'engage';
         ai.lastSeenX = seen.position.x;
         ai.lastSeenZ = seen.position.z;
@@ -371,7 +394,6 @@ export function stepBots(state, dt) {
       ai.state = 'engage';
       bot.velocity.x = 0;
       bot.velocity.z = 0;
-      ai.trackTime += dt;
       ai.reaction = Math.max(0, ai.reaction - dt);
       ai.aimError = Math.max(0.0035, ai.aimError * Math.max(0, 1 - dt * 1.9));
       aimAt(bot, target, dt, state.rng);
@@ -436,6 +458,7 @@ export function stepBots(state, dt) {
       }
     }
 
+    if (ai.state !== 'engage') bot.shotIndex = 0;
     updateStuck(state, bot, dt);
   }
 }
